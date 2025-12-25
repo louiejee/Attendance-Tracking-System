@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <!-- Main container with flexbox for layout -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <!-- Camera Feed Container on the left -->
+        <div id="camera-container" style="flex: 1; display: flex; justify-content: center; align-items: center;">
+            <video id="my_camera" width="390" height="320" style="border: 1px solid #000; transform: scaleX(-1);"></video>
+        </div>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="student-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: #fff; padding: 20px; border-radius: 10px; width: 350px; text-align: center; position: relative;">
+            <!-- Close Button -->
+            <span id="close-modal" style="position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer;">&times;</span>
+            
+            <!-- Student Image -->
+            <div id="modal-student-image" style="margin-bottom: 15px;">
+                <img id="student-image" src="" alt="Student Image" width="150" height="150" style="border-radius: 8px;"/>
+            </div>
+
+            <!-- Student Information Table -->
+            <table class="w3-table-all" style="margin: 0 auto; text-align: center;">
+                <tr>
+                    <td>IDNO</td>
+                    <td>:</td>
+                    <td><div id="my_idno"></div></td>
+                </tr>
+                <tr>
+                    <td>LASTNAME</td>
+                    <td>:</td>
+                    <td><div id="my_lastname"></div></td>
+                </tr>
+                <tr>
+                    <td>FIRSTNAME</td>
+                    <td>:</td>
+                    <td><div id="my_firstname"></div></td>
+                </tr>
+                <tr>
+                    <td>COURSE</td>
+                    <td>:</td>
+                    <td><div id="my_course"></div></td>
+                </tr>
+                <tr>
+                    <td>LEVEL</td>
+                    <td>:</td>
+                    <td><div id="my_level"></div></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Include jsQR library -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+    
+    <script>
+        window.onload = function() {
+            const video = document.getElementById('my_camera');
+            const canvasElement = document.createElement('canvas');
+            const canvas = canvasElement.getContext('2d');
+            const constraints = {
+                video: {
+                    facingMode: "environment"
+                }
+            };
+
+            // Access the webcam
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(function(stream) {
+                    video.srcObject = stream;
+                    video.setAttribute('playsinline', true); // required for iOS
+                    video.play();
+                    scanQRCode(); // Start scanning for QR codes
+                })
+                .catch(function(err) {
+                    alert("Error accessing webcam: " + err);
+                });
+
+            function scanQRCode() {
+                // Continuously scan for QR codes
+                setInterval(() => {
+                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                        // Draw the video frame onto the canvas
+                        canvasElement.height = video.videoHeight;
+                        canvasElement.width = video.videoWidth;
+                        canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+
+                        // Get image data from canvas
+                        const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+
+                        // Scan the image data for QR codes
+                        const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
+                            inversionAttempts: "dontInvert",
+                        });
+
+                        if (qrCode) {
+                            // If QR code is detected, display the QR code data
+                            processQRCodeData(qrCode.data);
+                        }
+                    }
+                }, 100); // Scan every 100ms
+            }
+
+            function processQRCodeData(qrData) {
+                // Split the QR code data into individual parts
+                const dataParts = qrData.split(',');
+
+                // Check if the data contains 5 parts (idno, lastname, firstname, course, level)
+                if (dataParts.length === 5) {
+                    const idno = dataParts[0].trim();
+                    const lastname = dataParts[1].trim();
+                    const firstname = dataParts[2].trim();
+                    const course = dataParts[3].trim();
+                    const level = dataParts[4].trim();
+
+                    // Populate the modal with the student data
+                    document.getElementById('my_idno').innerHTML = idno;
+                    document.getElementById('my_lastname').innerHTML = lastname;
+                    document.getElementById('my_firstname').innerHTML = firstname;
+                    document.getElementById('my_course').innerHTML = course;
+                    document.getElementById('my_level').innerHTML = level;
+
+                    // Dynamically set the student image path
+                    document.getElementById('student-image').src = `static/image/${idno}.jpg`;
+
+                    // Show the modal
+                    document.getElementById('student-modal').style.display = 'flex';
+                } else {
+                    alert("Error: No Student Found");
+                }
+            }
+
+            // Close Modal Logic
+            document.getElementById('close-modal').onclick = function() {
+                document.getElementById('student-modal').style.display = 'none';
+            };
+
+            // Hide modal when clicking outside the modal content
+            window.onclick = function(event) {
+                const modal = document.getElementById('student-modal');
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            };
+        };
+    </script>
+{% endblock %}

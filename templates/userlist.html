@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="w3-row" style="text-align: right; margin-right: 20px; margin-top: 10px;">
+        <button class="w3-button w3-teal" onclick="window.location.href='/attendance'">VIEW ATTENDANCE</button>
+        <button class="w3-button w3-teal" onclick="window.location.href='/add'">+ADD</button>
+        <button class="w3-button w3-teal" onclick="window.location.href='/'">LOGOUT</button>
+    </div>
+
+    <div class="w3-container w3-padding w3-round-xlarge w3-card-4" style="margin-top: 20px;">
+        <div class="w3-responsive w3-padding">
+            <table class="w3-table-all">
+                <thead>
+                    <tr class="w3-light-grey">
+                        <th>IDNO</th>
+                        <th>LASTNAME</th>
+                        <th>FIRSTNAME</th>
+                        <th>COURSE</th>
+                        <th>LEVEL</th>
+                        <th>ACTION</th>
+                    </tr>
+                </thead>
+                <tbody id="student-list">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Edit Form Modal -->
+    <div id="edit-form-container" class="w3-modal">
+        <div class="w3-modal-content w3-card-4 w3-animate-top w3-padding">
+            <span onclick="closeEditForm()" class="w3-button w3-large w3-display-topright">&times;</span>
+            <h2>Edit Student</h2>
+            <form id="edit-student-form" class="w3-container">
+                <label for="edit-lastname">Last Name</label>
+                <input type="text" id="edit-lastname" class="w3-input" required>
+                <label for="edit-firstname">First Name</label>
+                <input type="text" id="edit-firstname" class="w3-input" required>
+                <label for="edit-course">Course</label>
+                <select id="edit-course" class="w3-select" required>
+                    <option value=""></option>
+                    <option value="BSIT">BSIT</option>
+                    <option value="BSCS">BSCS</option>
+                    <option value="BSECE">BSECE</option>
+                    <option value="BSCpE">BSCpE</option>
+                </select>
+                <label for="edit-level">Level</label>
+                <select id="edit-level" class="w3-select" required>
+                    <option value=""></option>
+                    <option value="1">1st Year</option>
+                    <option value="2">2nd Year</option>
+                    <option value="3">3rd Year</option>
+                    <option value="4">4th Year</option>
+                </select>
+                <div style="text-align: center; margin-top: 20px;">
+                    <button type="button" onclick="saveEdits()" class="w3-button w3-green">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // On page load, fetch students data from localStorage
+        window.onload = function() {
+            // Retrieve the student data stored in localStorage
+            let studentsList = JSON.parse(localStorage.getItem('students') || '[]');
+            
+            // Reference to the student list table body
+            const studentListContainer = document.getElementById('student-list');
+
+            // Clear existing list before adding new students
+            studentListContainer.innerHTML = '';
+
+            // Add each student to the table
+            studentsList.forEach(function(student) {
+                const row = document.createElement('tr');
+
+                row.innerHTML = `
+                    <td>${student.idno}</td>
+                    <td>${student.lastname}</td>
+                    <td>${student.firstname}</td>
+                    <td>${student.course}</td>
+                    <td>${student.level}</td>
+                    <td>
+                        <button class="w3-button w3-blue" onclick="editStudent('${student.idno}')">EDIT</button>
+                        <button class="w3-button w3-red" onclick="confirmDelete('${student.idno}')">DELETE</button>
+                    </td>
+                `;
+
+                studentListContainer.appendChild(row);
+            });
+        };
+
+        // Function to confirm deletion of student
+        function confirmDelete(idno) {
+            // Display confirmation dialog
+            const isConfirmed = confirm("Are you sure you want to delete this student?");
+            
+            // If user confirms, delete the student
+            if (isConfirmed) {
+                deleteStudent(idno);
+            }
+        }
+
+        // Function to delete student
+        function deleteStudent(idno) {
+            let studentsList = JSON.parse(localStorage.getItem('students') || '[]');
+
+            // Filter out the student with the given ID
+            studentsList = studentsList.filter(student => student.idno !== idno);
+
+            // Update localStorage after removal
+            localStorage.setItem('students', JSON.stringify(studentsList));
+
+            // Refresh the page to reflect the changes
+            window.location.reload();
+        }
+
+        // Function to open the edit form and populate it with student data
+        function editStudent(idno) {
+            // Retrieve the students list
+            let studentsList = JSON.parse(localStorage.getItem('students') || '[]');
+
+            // Find the student to edit based on their ID
+            const studentToEdit = studentsList.find(student => student.idno === idno);
+
+            if (studentToEdit) {
+                // Set the form fields with the current student data
+                document.getElementById('edit-lastname').value = studentToEdit.lastname;
+                document.getElementById('edit-firstname').value = studentToEdit.firstname;
+                document.getElementById('edit-course').value = studentToEdit.course;
+                document.getElementById('edit-level').value = studentToEdit.level;
+
+                // Show the edit form
+                document.getElementById('edit-form-container').style.display = 'block';
+
+                // Store the student ID for saving later
+                window.selectedStudentId = studentToEdit.idno;
+            }
+        }
+
+        // Function to save the edited student details
+        function saveEdits() {
+            let studentsList = JSON.parse(localStorage.getItem('students') || '[]');
+
+            // Find the student by their ID and update their information
+            const studentToEdit = studentsList.find(student => student.idno === window.selectedStudentId);
+
+            if (studentToEdit) {
+                studentToEdit.lastname = document.getElementById('edit-lastname').value;
+                studentToEdit.firstname = document.getElementById('edit-firstname').value;
+                studentToEdit.course = document.getElementById('edit-course').value;
+                studentToEdit.level = document.getElementById('edit-level').value;
+
+                // Update the student list in localStorage
+                localStorage.setItem('students', JSON.stringify(studentsList));
+
+                // Close the edit form and refresh the page
+                closeEditForm();
+                window.location.reload();
+            }
+        }
+
+        // Function to close the edit form
+        function closeEditForm() {
+            document.getElementById('edit-form-container').style.display = 'none';
+        }
+    </script>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="w3-row" style="text-align: right; margin-right: 20px; margin-top: 10px;">
+    <button class="w3-button w3-teal" onclick="window.location.href='/attendance'">VIEW ATTENDANCE</button>
+    <button class="w3-button w3-teal" onclick="window.location.href='/add'">+ADD</button>
+    <button class="w3-button w3-teal" onclick="window.location.href='/'">LOGOUT</button>
+</div>
+
+<div class="w3-container w3-padding w3-round-xlarge w3-card-4" style="margin-top: 20px;">
+    <div class="w3-responsive w3-padding">
+        <table class="w3-table-all">
+            <thead>
+                <tr class="w3-light-grey">
+                    <th>IDNO</th>
+                    <th>LASTNAME</th>
+                    <th>FIRSTNAME</th>
+                    <th>COURSE</th>
+                    <th>LEVEL</th>
+                    <th>TIME LOGGED</th>
+                </tr>
+            </thead>
+            <tbody id="student-list">
+                <!-- Student records will be displayed here -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<canvas id="qr-canvas" style="display:none"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.min.js"></script>
+
+<script>
+    // Function to format date and time
+   // Function to format date and time in 12-hour format
+function formatDateTime() {
+    const date = new Date();
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+
+    hours = hours % 12;
+    hours = hours ? hours : 12; // Convert 0 to 12 for 12AM/PM
+
+    // Format: YYYY-MM-DD HH:MM AM/PM
+    return `${year}-${month}-${day} ${hours}:${minutes} ${ampm}`;
+}
+
+
+    // Function to store student data and update the display
+    function addStudentToLocalStorage(student) {
+        let studentsList = JSON.parse(localStorage.getItem('students') || '[]');
+
+        // Ensure the student is not already in the list
+        const existingStudent = studentsList.find(s => s.idno === student.idno);
+        if (!existingStudent) {
+            studentsList.push(student);
+            localStorage.setItem('students', JSON.stringify(studentsList));
+        }
+
+        // Update the table with the new list of students
+        updateStudentTable();
+    }
+
+    // Update student list table with the current list from localStorage
+    function updateStudentTable() {
+        const studentsList = JSON.parse(localStorage.getItem('students') || '[]');
+        const studentListContainer = document.getElementById('student-list');
+
+        studentListContainer.innerHTML = ''; // Clear existing rows
+        studentsList.forEach(function (student) {
+            // Update the time for each student (this ensures the current time is always shown when the page is refreshed)
+            student.time_logged = formatDateTime(); 
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${student.idno}</td>
+                <td>${student.lastname}</td>
+                <td>${student.firstname}</td>
+                <td>${student.course}</td>
+                <td>${student.level}</td>
+                <td>${student.time_logged}</td>
+            `;
+            studentListContainer.appendChild(row);
+        });
+    }
+
+    // Load students and update their time on page load
+    window.onload = function () {
+        updateStudentTable();
+    };
+</script>
+
+{% endblock %}
