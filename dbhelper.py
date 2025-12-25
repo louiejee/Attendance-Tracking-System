@@ -1,5 +1,7 @@
 from mysql.connector import connect
 
+import sqlite3
+
 def dbconnect():
     return connect(
         host='localhost',
@@ -46,3 +48,21 @@ def insert_user(idno, lastname, firstname, course, level):
     db.commit()  # Commit the transaction
     cursor.close()  # Close the cursor
     db.close()  # Close the connection
+
+def get_student_by_id(student_id):
+    conn = sqlite3.connect("your_database.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM students WHERE idno=?", (student_id,))
+    student = cursor.fetchone()
+    conn.close()
+    return student
+
+def insert_attendance(idno, lastname, firstname, course, level, time_logged):
+    conn = sqlite3.connect("your_database.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO attendance (idno, lastname, firstname, course, level, time_logged)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (idno, lastname, firstname, course, level, time_logged))
+    conn.commit()
+    conn.close()
