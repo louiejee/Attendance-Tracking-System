@@ -1,1 +1,16 @@
-
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.db
+*.sqlite3
+instance/
+.DS_Store
+*.log
+static/qrcode/*
+static/image/*
+!static/qrcode/.gitkeep
+!static/image/.gitkeep
