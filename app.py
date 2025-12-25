@@ -150,3 +150,8 @@ def index():
 if __name__ == "__main__":
 
     app.run(debug=True, host="0.0.0.0")
+
+# Add this after app.secret_key
+from dbhelper_render import initialize_database
+initialize_database()
+
