@@ -194,113 +194,65 @@
     <!-- In student.html, replace the entire JavaScript section with this: -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/webcamjs/1.0.26/webcam.min.js"></script>
+
 <script>
-    // Global variables
     let currentImageData = null;
-    let currentQRCodeData = null;
     
     // Configure Webcam
     Webcam.set({
         width: 320,
         height: 240,
-        dest_width: 320,
-        dest_height: 240,
         image_format: 'jpeg',
         jpeg_quality: 90,
-        force_flash: false,
-        flip_horiz: true,
-        fps: 45
+        flip_horiz: true
     });
-
     Webcam.attach('#my_camera');
     
     function take_snapshot() {
-        // Get form values
         const idno = document.getElementById('idno').value.trim();
         const lastname = document.getElementById('lastname').value.trim();
         const firstname = document.getElementById('firstname').value.trim();
         const course = document.getElementById('course').value;
         const level = document.getElementById('level').value;
 
-        // Validate
         if (!idno || !lastname || !firstname || !course || !level) {
-            alert("Please fill in ALL fields before taking a snapshot.");
+            alert("Please fill in ALL fields.");
             return;
         }
 
-        // Take snapshot
         Webcam.snap(function(data_uri) {
-            // Store image data
             currentImageData = data_uri;
             
-            // Display photo preview
-            document.getElementById('my_result').innerHTML = '<img src="'+data_uri+'" style="border: 2px solid #ddd; border-radius: 10px; width: 200px;">';
+            // Display photo
+            document.getElementById('my_result').innerHTML = 
+                '<img src="'+data_uri+'" style="width:200px; border-radius:8px;">';
             
-            // Update preview table
+            // Update table
             document.getElementById('my_idno').textContent = idno;
             document.getElementById('my_lastname').textContent = lastname;
             document.getElementById('my_firstname').textContent = firstname;
             document.getElementById('my_course').textContent = course;
             document.getElementById('my_level').textContent = level;
             
-            // Generate QR Code - SIMPLE VERSION
-            generateSimpleQRCode(idno, lastname, firstname, course, level);
+            // Generate QR Code (ORIGINAL STYLE)
+            const qrData = `${idno},${lastname},${firstname},${course},${level}`;
+            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=150x150&format=png&margin=10`;
             
-            alert("Snapshot taken! Now click SAVE STUDENT.");
+            document.getElementById('my_qr_code').innerHTML = 
+                `<img id="generated_qr_code" src="${qrCodeUrl}" width="150" height="150" alt="QR Code" 
+                      style="border: 1px solid #ddd; border-radius: 5px;">`;
+            
+            alert("Ready! Click SAVE STUDENT.");
         });
     }
     
-    function generateSimpleQRCode(idno, lastname, firstname, course, level) {
-        // Create a canvas element
-        const canvas = document.createElement('canvas');
-        canvas.width = 150;
-        canvas.height = 150;
-        const ctx = canvas.getContext('2d');
-        
-        // Draw QR code background
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, 150, 150);
-        
-        // Draw QR code pattern (simplified)
-        ctx.fillStyle = '#000000';
-        
-        // Draw corner squares
-        ctx.fillRect(10, 10, 30, 30);  // Top-left
-        ctx.fillRect(110, 10, 30, 30); // Top-right
-        ctx.fillRect(10, 110, 30, 30); // Bottom-left
-        
-        // Draw some pattern lines
-        for(let i = 0; i < 10; i++) {
-            const y = 50 + i * 5;
-            ctx.fillRect(20, y, 110, 2);
-        }
-        
-        // Add text in the middle
-        ctx.fillStyle = '#000000';
-        ctx.font = 'bold 12px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(idno, 75, 70);
-        ctx.font = '10px Arial';
-        ctx.fillText(course, 75, 85);
-        ctx.fillText('Year ' + level, 75, 100);
-        
-        // Convert to data URL
-        currentQRCodeData = canvas.toDataURL('image/png');
-        
-        // Display QR code
-        const qrContainer = document.getElementById('my_qr_code');
-        qrContainer.innerHTML = '<img id="generated_qr_code" src="' + currentQRCodeData + '" width="150" height="150" alt="QR Code" style="border: 1px solid #ddd;">';
-    }
-    
     function saveStudent() {
-        // Get form values
         const idno = document.getElementById('idno').value.trim();
         const lastname = document.getElementById('lastname').value.trim();
         const firstname = document.getElementById('firstname').value.trim();
         const course = document.getElementById('course').value;
         const level = document.getElementById('level').value;
 
-        // Validate
         if (!idno || !lastname || !firstname || !course || !level) {
             alert("Please fill in ALL fields.");
             return;
@@ -311,21 +263,20 @@
             return;
         }
 
-        // Show loading
-        const saveBtn = document.querySelector('button[onclick="saveStudent()"]');
-        const originalText = saveBtn.textContent;
-        saveBtn.textContent = "Saving...";
-        saveBtn.disabled = true;
+        // Get QR code URL
+        const qrImg = document.getElementById('generated_qr_code');
+        const qrCodeUrl = qrImg ? qrImg.src : '';
 
-        // Create FormData for submission
+        // Submit everything
         const formData = new FormData();
         formData.append('idno', idno);
         formData.append('lastname', lastname);
         formData.append('firstname', firstname);
         formData.append('course', course);
         formData.append('level', level);
+        formData.append('image_data', currentImageData);
+        formData.append('qr_code_url', qrCodeUrl);
 
-        // Submit the form
         fetch('/add_student', {
             method: 'POST',
             body: formData
@@ -333,51 +284,36 @@
         .then(response => {
             if (response.redirected) {
                 window.location.href = response.url;
-            } else {
-                return response.text();
-            }
-        })
-        .then(text => {
-            if (text) {
-                alert("Error: " + text);
-                saveBtn.textContent = originalText;
-                saveBtn.disabled = false;
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('Error saving student. Check console.');
-            saveBtn.textContent = originalText;
-            saveBtn.disabled = false;
+            alert('Error: ' + error.message);
         });
     }
     
     function cancelForm() {
-        if (confirm("Cancel? All unsaved data will be lost.")) {
-            // Reset form
-            document.getElementById('idno').value = '';
-            document.getElementById('lastname').value = '';
-            document.getElementById('firstname').value = '';
-            document.getElementById('course').value = '';
-            document.getElementById('level').value = '';
+        // Reset everything
+        document.getElementById('idno').value = '';
+        document.getElementById('lastname').value = '';
+        document.getElementById('firstname').value = '';
+        document.getElementById('course').value = '';
+        document.getElementById('level').value = '';
+        
+        document.getElementById('my_result').innerHTML = 
+            '<p class="w3-text-grey">Photo will appear here</p>';
+        document.getElementById('my_qr_code').innerHTML = 
+            '<p class="w3-text-grey">QR Code will appear here</p>';
             
-            // Reset preview
-            document.getElementById('my_result').innerHTML = '<p class="w3-text-grey">Photo will appear here</p>';
-            document.getElementById('my_qr_code').innerHTML = '<p class="w3-text-grey">QR Code will appear here</p>';
-            
-            // Reset table
-            document.getElementById('my_idno').textContent = '-';
-            document.getElementById('my_lastname').textContent = '-';
-            document.getElementById('my_firstname').textContent = '-';
-            document.getElementById('my_course').textContent = '-';
-            document.getElementById('my_level').textContent = '-';
-            
-            // Reset variables
-            currentImageData = null;
-            currentQRCodeData = null;
-        }
+        document.getElementById('my_idno').textContent = '-';
+        document.getElementById('my_lastname').textContent = '-';
+        document.getElementById('my_firstname').textContent = '-';
+        document.getElementById('my_course').textContent = '-';
+        document.getElementById('my_level').textContent = '-';
+        
+        currentImageData = null;
     }
 </script>
 {% endblock %}
+
 
 
