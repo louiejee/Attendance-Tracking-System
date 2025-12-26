@@ -22,11 +22,25 @@ os.makedirs('static/image', exist_ok=True)
 def validateuser():
     username = request.form['username']
     password = request.form['password']
-    if len(validate_user(username, password)) > 0:
+    
+    # Use the correct function name
+    result = validate_user(username, password)
+    
+    if result:  # Check if result is not empty
         session['username'] = username
+        session['logged_in'] = True
         return redirect(url_for('userlist'))
     else:
-        return render_template("login.html", pagetitle="FINAL PROJECT")
+        return render_template("login.html", pagetitle="FINAL PROJECT", error="Invalid credentials")
+
+@app.route("/userlist")
+def userlist():
+    # Check if user is logged in
+    if not session.get('logged_in'):
+        return redirect(url_for('admin'))
+    
+    users = get_all_users_formatted()  # Use the new function
+    return render_template("userlist.html", ulist=users, pagetitle='STUDENTLIST')
 
 # Get Student Info
 @app.route("/get_student_info/<student_id>")
@@ -104,6 +118,19 @@ def save_qr_code():
 
     return jsonify({'success': False, 'message': 'QR code URL is missing or invalid.'})
 
+@app.route("/delete_student/<idno>", methods=["DELETE"])
+def delete_student(idno):
+    if delete_user(idno):
+        return jsonify({"success": True})
+    return jsonify({"success": False})
+
+@app.route("/update_student/<idno>", methods=["PUT"])
+def update_student(idno):
+    data = request.get_json()
+    if update_user(idno, data['lastname'], data['firstname'], data['course'], data['level']):
+        return jsonify({"success": True})
+    return jsonify({"success": False})
+
 
 # User List Page
 @app.route("/userlist")
@@ -124,9 +151,13 @@ def add_student():
     firstname = request.form['firstname']
     course = request.form['course']
     level = request.form['level']
-
-    insert_user(idno, lastname, firstname, course, level)
     
+    # Check if student already exists
+    if check_user_exists(idno):
+        return render_template("student.html", pagetitle="STUDENT", 
+                              error="Student ID already exists!")
+    
+    insert_user(idno, lastname, firstname, course, level)
     return redirect(url_for('userlist'))
 
 # Admin Login
@@ -154,5 +185,6 @@ if __name__ == "__main__":
 # Add this after app.secret_key
 from dbhelper_render import initialize_database
 initialize_database()
+
 
 
