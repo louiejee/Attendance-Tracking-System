@@ -66,19 +66,46 @@ def debug_db():
 # Add Student Action
 @app.route("/add_student", methods=["POST"])
 def add_student():
-    idno = request.form['idno']
-    lastname = request.form['lastname']
-    firstname = request.form['firstname']
-    course = request.form['course']
-    level = request.form['level']
-    
-    # Check if student already exists
-    if check_user_exists(idno):
-        return render_template("student.html", pagetitle="STUDENT", 
-                              error="Student ID already exists!")
-    
-    insert_user(idno, lastname, firstname, course, level)
-    return redirect(url_for('userlist'))
+    try:
+        # Get form data
+        idno = request.form.get('idno', '').strip()
+        lastname = request.form.get('lastname', '').strip()
+        firstname = request.form.get('firstname', '').strip()
+        course = request.form.get('course', '').strip()
+        level = request.form.get('level', '').strip()
+        
+        print(f"Adding student: {idno}, {lastname}, {firstname}, {course}, {level}")
+        
+        # Validate required fields
+        if not all([idno, lastname, firstname, course, level]):
+            return render_template("student.html", 
+                                 pagetitle="STUDENT", 
+                                 error="All fields are required!")
+        
+        # Check if student already exists
+        if check_user_exists(idno):
+            return render_template("student.html", 
+                                 pagetitle="STUDENT", 
+                                 error=f"Student ID {idno} already exists!")
+        
+        # Insert into database
+        success = insert_user(idno, lastname, firstname, course, level)
+        
+        if success:
+            print(f"Student {idno} added successfully")
+            return redirect(url_for('userlist'))
+        else:
+            return render_template("student.html", 
+                                 pagetitle="STUDENT", 
+                                 error="Failed to save student to database.")
+            
+    except Exception as e:
+        print(f"Error in add_student: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return render_template("student.html", 
+                             pagetitle="STUDENT", 
+                             error=f"Server error: {str(e)}")
 
 # Admin Login
 @app.route("/admin", methods=["GET"])
@@ -263,5 +290,6 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
+
 
 
