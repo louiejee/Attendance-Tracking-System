@@ -224,5 +224,51 @@ def update_user(idno, lastname, firstname, course, level):
     print(f"Updating user {idno}")
     return True
 
+# In dbhelper.py - Make sure these functions work
 def get_all_attendance():
-    return []
+    """Get all attendance records WITH time_logged"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return []
+            
+        cursor = conn.cursor()
+        cursor.execute("SELECT idno, lastname, firstname, course, level, time_logged FROM attendance ORDER BY time_logged DESC")
+        
+        columns = [desc[0] for desc in cursor.description]
+        records = cursor.fetchall()
+        
+        result = []
+        for record in records:
+            result.append(dict(zip(columns, record)))
+        
+        cursor.close()
+        conn.close()
+        return result
+        
+    except Exception as e:
+        print(f"Error getting attendance: {e}")
+        return []
+
+def delete_user(idno):
+    """Delete user from database"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return False
+            
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM users WHERE idno = %s", (idno,))
+        conn.commit()
+        
+        success = cursor.rowcount > 0
+        cursor.close()
+        conn.close()
+        
+        print(f"Delete user {idno}: {'success' if success else 'not found'}")
+        return success
+        
+    except Exception as e:
+        print(f"Error deleting user: {e}")
+        return False
+
