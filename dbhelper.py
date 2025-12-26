@@ -213,8 +213,78 @@ def get_student_by_id(student_id):
     return None
 
 def insert_attendance(idno, lastname, firstname, course, level, time_logged):
-    print(f"Attendance recorded for {idno}")
-    return True
+    """Insert attendance record into database"""
+    print(f"Inserting attendance: {idno} at {time_logged}")
+    
+    try:
+        conn = get_db_connection()
+        if not conn:
+            print("No database connection for attendance")
+            # Fallback to file storage
+            return insert_attendance_to_file(idno, lastname, firstname, course, level, time_logged)
+            
+        cursor = conn.cursor()
+        
+        if USE_POSTGRESQL:
+            sql = """
+            INSERT INTO attendance (idno, lastname, firstname, course, level, time_logged) 
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """
+        else:
+            sql = """
+            INSERT INTO attendance (idno, lastname, firstname, course, level, time_logged)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """
+        
+        cursor.execute(sql, (idno, lastname, firstname, course, level, time_logged))
+        conn.commit()
+        
+        print(f"✓ Attendance recorded for {idno}")
+        
+        cursor.close()
+        conn.close()
+        return True
+        
+    except Exception as e:
+        print(f"✗ Error inserting attendance: {e}")
+        # Try file storage as fallback
+        return insert_attendance_to_file(idno, lastname, firstname, course, level, time_logged)
+
+def insert_attendance_to_file(idno, lastname, firstname, course, level, time_logged):
+    """Fallback: Save attendance to JSON file"""
+    import json
+    import os
+    
+    try:
+        attendance_file = "attendance_data.json"
+        
+        # Load existing attendance
+        if os.path.exists(attendance_file):
+            with open(attendance_file, 'r') as f:
+                attendance = json.load(f)
+        else:
+            attendance = []
+        
+        # Add new record
+        attendance.append({
+            'idno': idno,
+            'lastname': lastname,
+            'firstname': firstname,
+            'course': course,
+            'level': level,
+            'time_logged': time_logged
+        })
+        
+        # Save back to file
+        with open(attendance_file, 'w') as f:
+            json.dump(attendance, f)
+        
+        print(f"✓ Attendance saved to file for {idno}")
+        return True
+        
+    except Exception as e:
+        print(f"✗ File save also failed: {e}")
+        return False
 
 def delete_user(idno):
     print(f"Deleting user {idno}")
@@ -271,4 +341,5 @@ def delete_user(idno):
     except Exception as e:
         print(f"Error deleting user: {e}")
         return False
+
 
