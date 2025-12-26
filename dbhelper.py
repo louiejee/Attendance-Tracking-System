@@ -1,13 +1,11 @@
 # dbhelper.py - Complete version
 import os
+import json
 from urllib.parse import urlparse
 import psycopg2
 import traceback
 
 print("=== Loading dbhelper.py ===")
-
-# Check if we're using PostgreSQL
-USE_POSTGRESQL = True
 
 def get_db_connection():
     """Get database connection for Render PostgreSQL"""
@@ -36,6 +34,65 @@ def get_db_connection():
     except Exception as e:
         print(f"✗ Database connection failed: {str(e)}")
         return None
+
+def get_all_attendance():
+    """Get all attendance records, most recent first - FIXED FOR POSTGRESQL"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            print("No database connection")
+            # Fallback to file
+            return get_attendance_from_file()
+            
+        cursor = conn.cursor()
+        
+        # ✅ POSTGRESQL syntax (not SQLite)
+        cursor.execute("""
+            SELECT idno, lastname, firstname, course, level, time_logged 
+            FROM attendance 
+            ORDER BY time_logged DESC
+        """)
+        
+        records = cursor.fetchall()
+        conn.close()
+        
+        # Convert to list of dictionaries
+        attendance_list = []
+        for record in records:
+            attendance_list.append({
+                'idno': record[0],
+                'lastname': record[1],
+                'firstname': record[2],
+                'course': record[3],
+                'level': record[4],
+                'time_logged': str(record[5])  # Convert timestamp to string
+            })
+        
+        print(f"Found {len(attendance_list)} attendance records")
+        return attendance_list
+        
+    except Exception as e:
+        print(f"Error in get_all_attendance: {e}")
+        traceback.print_exc()
+        return []
+
+def get_attendance_from_file():
+    """Fallback: Get attendance from JSON file"""
+    try:
+        attendance_file = "attendance_data.json"
+        
+        if os.path.exists(attendance_file):
+            with open(attendance_file, 'r') as f:
+                attendance = json.load(f)
+            print(f"Loaded {len(attendance)} records from file")
+            return attendance
+        else:
+            print("No attendance file found")
+            return []
+            
+    except Exception as e:
+        print(f"Error reading attendance file: {e}")
+        return []
 
 def check_user_exists(idno):
     """Check if a user with given IDNO already exists"""
@@ -208,9 +265,33 @@ def initialize_database():
     except Exception as e:
         print(f"Error initializing database: {e}")
 
-# Other functions (simplified for now)
 def get_student_by_id(student_id):
-    return None
+    """Get student by ID"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return None
+            
+        cursor = conn.cursor()
+        cursor.execute("SELECT idno, lastname, firstname, course, level FROM users WHERE idno = %s", (student_id,))
+        result = cursor.fetchone()
+        
+        cursor.close()
+        conn.close()
+        
+        if result:
+            return {
+                'idno': result[0],
+                'lastname': result[1],
+                'firstname': result[2],
+                'course': result[3],
+                'level': result[4]
+            }
+        return None
+        
+    except Exception as e:
+        print(f"Error getting student: {e}")
+        return None
 
 def insert_attendance(idno, lastname, firstname, course, level, time_logged):
     """Insert attendance record into database"""
@@ -225,16 +306,10 @@ def insert_attendance(idno, lastname, firstname, course, level, time_logged):
             
         cursor = conn.cursor()
         
-        if USE_POSTGRESQL:
-            sql = """
-            INSERT INTO attendance (idno, lastname, firstname, course, level, time_logged) 
-            VALUES (%s, %s, %s, %s, %s, %s)
-            """
-        else:
-            sql = """
-            INSERT INTO attendance (idno, lastname, firstname, course, level, time_logged)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            """
+        sql = """
+        INSERT INTO attendance (idno, lastname, firstname, course, level, time_logged) 
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """
         
         cursor.execute(sql, (idno, lastname, firstname, course, level, time_logged))
         conn.commit()
@@ -252,9 +327,6 @@ def insert_attendance(idno, lastname, firstname, course, level, time_logged):
 
 def insert_attendance_to_file(idno, lastname, firstname, course, level, time_logged):
     """Fallback: Save attendance to JSON file"""
-    import json
-    import os
-    
     try:
         attendance_file = "attendance_data.json"
         
@@ -277,7 +349,7 @@ def insert_attendance_to_file(idno, lastname, firstname, course, level, time_log
         
         # Save back to file
         with open(attendance_file, 'w') as f:
-            json.dump(attendance, f)
+            json.dump(attendance, f, indent=2)
         
         print(f"✓ Attendance saved to file for {idno}")
         return True
@@ -285,44 +357,6 @@ def insert_attendance_to_file(idno, lastname, firstname, course, level, time_log
     except Exception as e:
         print(f"✗ File save also failed: {e}")
         return False
-
-def delete_user(idno):
-    print(f"Deleting user {idno}")
-    return True
-
-def update_user(idno, lastname, firstname, course, level):
-    print(f"Updating user {idno}")
-    return True
-
-# In dbhelper.py - Make sure these functions work
-# Add this function to your dbhelper.py
-def get_all_attendance():
-    """Get all attendance records, most recent first"""
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        SELECT idno, lastname, firstname, course, level, time_logged 
-        FROM attendance 
-        ORDER BY time_logged DESC
-    """)
-    
-    records = cursor.fetchall()
-    conn.close()
-    
-    # Convert to list of dictionaries
-    attendance_list = []
-    for record in records:
-        attendance_list.append({
-            'idno': record[0],
-            'lastname': record[1],
-            'firstname': record[2],
-            'course': record[3],
-            'level': record[4],
-            'time_logged': record[5]
-        })
-    
-    return attendance_list
 
 def delete_user(idno):
     """Delete user from database"""
@@ -346,5 +380,28 @@ def delete_user(idno):
         print(f"Error deleting user: {e}")
         return False
 
-
-
+def update_user(idno, lastname, firstname, course, level):
+    """Update user information"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return False
+            
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE users 
+            SET lastname = %s, firstname = %s, course = %s, level = %s 
+            WHERE idno = %s
+        """, (lastname, firstname, course, level, idno))
+        conn.commit()
+        
+        success = cursor.rowcount > 0
+        cursor.close()
+        conn.close()
+        
+        print(f"Update user {idno}: {'success' if success else 'not found'}")
+        return success
+        
+    except Exception as e:
+        print(f"Error updating user: {e}")
+        return False
