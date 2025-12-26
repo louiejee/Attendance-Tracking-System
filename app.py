@@ -63,6 +63,48 @@ def debug_db():
     except Exception as e:
         return f"<h1>Database Error</h1><pre>{traceback.format_exc()}</pre>"
 
+# Add this route to your app.py
+
+@app.route("/delete_attendance", methods=["POST"])
+def delete_attendance():
+    """Delete an attendance record"""
+    try:
+        data = request.get_json()
+        idno = data.get('idno')
+        time_logged = data.get('time_logged')
+        
+        if not idno or not time_logged:
+            return jsonify({"success": False, "error": "Missing data"})
+        
+        # Connect to database
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"success": False, "error": "Database connection failed"})
+        
+        cursor = conn.cursor()
+        
+        # Delete the attendance record
+        cursor.execute("""
+            DELETE FROM attendance 
+            WHERE idno = %s AND time_logged = %s
+        """, (idno, time_logged))
+        
+        conn.commit()
+        
+        deleted_count = cursor.rowcount
+        cursor.close()
+        conn.close()
+        
+        if deleted_count > 0:
+            print(f"Deleted attendance for {idno} at {time_logged}")
+            return jsonify({"success": True, "message": "Attendance deleted"})
+        else:
+            return jsonify({"success": False, "error": "Record not found"})
+            
+    except Exception as e:
+        print(f"Error deleting attendance: {e}")
+        return jsonify({"success": False, "error": str(e)})
+
 # Add Student Action
 @app.route("/add_student", methods=["POST"])
 def add_student():
@@ -368,6 +410,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
+
 
 
 
