@@ -24,6 +24,45 @@ os.makedirs('static/qr_codes', exist_ok=True)  # Add this
 def add_user():
     return render_template("student.html", pagetitle="STUDENT")
 
+@app.route("/debug-db")
+def debug_db():
+    """Debug database issues"""
+    from dbhelper import get_db_connection
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if users table exists
+        cursor.execute("""
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_name = 'users'
+        """)
+        table_exists = cursor.fetchone()
+        
+        # Count users
+        cursor.execute("SELECT COUNT(*) FROM users")
+        user_count = cursor.fetchone()[0]
+        
+        # Get column info
+        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'")
+        columns = [row[0] for row in cursor.fetchall()]
+        
+        cursor.close()
+        conn.close()
+        
+        return f"""
+        <h1>Database Debug</h1>
+        <p>Users table exists: {table_exists is not None}</p>
+        <p>Total users: {user_count}</p>
+        <p>Columns: {', '.join(columns)}</p>
+        <p><a href="/add">Go back to Add Student</a></p>
+        """
+        
+    except Exception as e:
+        return f"<h1>Database Error</h1><pre>{traceback.format_exc()}</pre>"
+
 # Add Student Action
 @app.route("/add_student", methods=["POST"])
 def add_student():
@@ -224,4 +263,5 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
+
 
