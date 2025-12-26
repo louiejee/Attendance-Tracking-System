@@ -67,45 +67,62 @@ def debug_db():
 @app.route("/add_student", methods=["POST"])
 def add_student():
     try:
-        # Get form data
-        idno = request.form.get('idno', '').strip()
-        lastname = request.form.get('lastname', '').strip()
-        firstname = request.form.get('firstname', '').strip()
-        course = request.form.get('course', '').strip()
-        level = request.form.get('level', '').strip()
+        idno = request.form['idno']
+        lastname = request.form['lastname']
+        firstname = request.form['firstname']
+        course = request.form['course']
+        level = request.form['level']
         
-        print(f"Adding student: {idno}, {lastname}, {firstname}, {course}, {level}")
+        print(f"Adding student: {idno}")
         
-        # Validate required fields
-        if not all([idno, lastname, firstname, course, level]):
-            return render_template("student.html", 
-                                 pagetitle="STUDENT", 
-                                 error="All fields are required!")
-        
-        # Check if student already exists
+        # Check if exists
         if check_user_exists(idno):
-            return render_template("student.html", 
-                                 pagetitle="STUDENT", 
-                                 error=f"Student ID {idno} already exists!")
+            return render_template("student.html",
+                                 pagetitle="STUDENT",
+                                 error=f"Student {idno} already exists!")
         
-        # Insert into database
-        success = insert_user(idno, lastname, firstname, course, level)
+        # Save student to database/file
+        insert_user(idno, lastname, firstname, course, level)
         
-        if success:
-            print(f"Student {idno} added successfully")
-            return redirect(url_for('userlist'))
-        else:
-            return render_template("student.html", 
-                                 pagetitle="STUDENT", 
-                                 error="Failed to save student to database.")
-            
+        # Save image if provided
+        image_data = request.form.get('image_data')
+        if image_data and 'data:image' in image_data:
+            try:
+                from io import BytesIO
+                import base64
+                from PIL import Image
+                
+                image_data = image_data.split(',')[1]
+                image = Image.open(BytesIO(base64.b64decode(image_data)))
+                image.save(f"static/image/{idno}.jpg")
+                print(f"✓ Image saved for {idno}")
+            except Exception as e:
+                print(f"Image save error: {e}")
+        
+        # Save QR code if provided
+        qr_code_url = request.form.get('qr_code_url')
+        if qr_code_url:
+            try:
+                import requests
+                import os
+                
+                # Download QR code
+                response = requests.get(qr_code_url)
+                os.makedirs('static/qrcode', exist_ok=True)
+                
+                with open(f'static/qrcode/{idno}.png', 'wb') as f:
+                    f.write(response.content)
+                print(f"✓ QR Code saved for {idno}")
+            except Exception as e:
+                print(f"QR Code save error: {e}")
+        
+        return redirect(url_for('userlist'))
+        
     except Exception as e:
-        print(f"Error in add_student: {e}")
-        import traceback
-        print(traceback.format_exc())
-        return render_template("student.html", 
-                             pagetitle="STUDENT", 
-                             error=f"Server error: {str(e)}")
+        print(f"Error: {e}")
+        return render_template("student.html",
+                             pagetitle="STUDENT",
+                             error=f"Error: {str(e)}")
 
 # Admin Login
 @app.route("/admin", methods=["GET"])
@@ -290,6 +307,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
+
 
 
 
