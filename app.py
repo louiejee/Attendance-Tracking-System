@@ -184,16 +184,35 @@ def attendance():
 # Scan QR Code and Log Attendance
 @app.route("/scan_qr", methods=["POST"])
 def scan_qr():
-    qr_data = request.get_json()
-    student_info = qr_data.get('student_info', {})
-
-    if student_info:
-        time_logged = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        qr_data = request.get_json()
+        print(f"QR Data received: {qr_data}")  # Debug
         
-        # Check if student exists in database
-        student = get_student_by_id(student_info.get('id', student_info.get('idno', '')))
+        if not qr_data:
+            return jsonify({"success": False, "error": "No data received"})
+        
+        student_info = qr_data.get('student_info', {})
+        
+        if not student_info:
+            return jsonify({"success": False, "error": "No student info"})
+        
+        # Extract data
+        idno = student_info.get('idno', '')
+        lastname = student_info.get('lastname', '')
+        firstname = student_info.get('firstname', '')
+        course = student_info.get('course', '')
+        level = student_info.get('level', '')
+        
+        # Use provided timestamp or create one
+        time_logged = student_info.get('time_logged', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        
+        print(f"Saving attendance for: {idno} at {time_logged}")
+        
+        # Check if student exists first
+        student = get_student_by_id(idno)
         
         if student:
+            # Student exists in database - use that data
             insert_attendance(
                 student['idno'],
                 student['lastname'],
@@ -202,10 +221,25 @@ def scan_qr():
                 student['level'],
                 time_logged
             )
-            return jsonify({"success": True})
-    
-    return jsonify({"success": False, "error": "Student not found"})
-
+        else:
+            # Student not in database - use QR code data
+            insert_attendance(
+                idno,
+                lastname,
+                firstname,
+                course,
+                level,
+                time_logged
+            )
+        
+        print(f"✓ Attendance saved for {idno}")
+        return jsonify({"success": True, "message": "Attendance recorded"})
+        
+    except Exception as e:
+        print(f"Error in scan_qr: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({"success": False, "error": str(e)})
 # API Routes
 @app.route("/api/students")
 def api_students():
@@ -307,6 +341,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
+
 
 
 
