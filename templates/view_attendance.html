@@ -107,6 +107,62 @@
     };
 </script>
 
+<!-- In your view_attendance.html template -->
+<script>
+// Function to fetch and display latest attendance
+async function loadLatestAttendance() {
+    try {
+        // Get all attendance records
+        const response = await fetch('/get_attendance');
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch attendance data');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.attendance.length > 0) {
+            // Get the most recent attendance (first in array)
+            const latest = data.attendance[0];
+            
+            // Display the latest attendance
+            displayAttendance(latest);
+        } else {
+            document.getElementById('attendance-container').innerHTML = 
+                '<p>No attendance records found. Scan a QR code first.</p>';
+        }
+        
+    } catch (error) {
+        console.error('Error loading attendance:', error);
+        document.getElementById('attendance-container').innerHTML = 
+            `<p style="color: red;">Error: ${error.message}</p>`;
+    }
+}
+
+// Function to display attendance data
+function displayAttendance(record) {
+    const container = document.getElementById('attendance-container');
+    container.innerHTML = `
+        <div class="attendance-card">
+            <h3>✅ Attendance Recorded Successfully!</h3>
+            <p><strong>Student ID:</strong> ${record.idno}</p>
+            <p><strong>Name:</strong> ${record.lastname}, ${record.firstname}</p>
+            <p><strong>Course:</strong> ${record.course}</p>
+            <p><strong>Year Level:</strong> ${record.level}</p>
+            <p><strong>Time Logged:</strong> ${record.time_logged}</p>
+            <p><strong>Status:</strong> <span class="status">PRESENT</span></p>
+        </div>
+    `;
+}
+
+// Load attendance when page loads
+document.addEventListener('DOMContentLoaded', loadLatestAttendance);
+
+// Optional: Auto-refresh every 5 seconds to show new scans
+setInterval(loadLatestAttendance, 5000);
+</script>
+
 
 {% endblock %}
+
 
