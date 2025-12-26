@@ -135,7 +135,66 @@
             alert("Error: Invalid QR Code format");
         }
     }
+
+    <!-- In your attendance_checker.html template -->
+<script>
+// Initialize QR Scanner if not already done
+function initQRScanner() {
+    const html5QrCode = new Html5Qrcode("qr-reader");
     
+    const config = { 
+        fps: 10, 
+        qrbox: { width: 250, height: 250 } 
+    };
+    
+    html5QrCode.start(
+        { facingMode: "environment" },
+        config,
+        onScanSuccess,
+        onScanFailure
+    );
+}
+
+async function onScanSuccess(decodedText) {
+    try {
+        // Parse QR data (should contain student info)
+        const studentInfo = JSON.parse(decodedText);
+        
+        // Send scan data to backend
+        const response = await fetch('/scan_qr', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                student_info: studentInfo
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // ✅ IMPORTANT: Redirect to attendance page
+            window.location.href = '/attendance';
+        } else {
+            alert('Failed to record attendance. Please try again.');
+        }
+        
+    } catch (error) {
+        console.error('Scan error:', error);
+        alert('Invalid QR code. Please scan a valid student QR code.');
+    }
+}
+
+function onScanFailure(error) {
+    // Optional: Handle scan failure
+    console.log(`QR Scan failed: ${error}`);
+}
+
+// Start scanner when page loads
+document.addEventListener('DOMContentLoaded', initQRScanner);
+</script>
+        
     function saveAttendanceToDatabase(idno, lastname, firstname, course, level) {
         // Get current timestamp
         const now = new Date();
@@ -197,4 +256,5 @@
     </script>
 
 {% endblock %}
+
 
