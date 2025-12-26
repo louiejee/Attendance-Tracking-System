@@ -295,30 +295,34 @@ def update_user(idno, lastname, firstname, course, level):
     return True
 
 # In dbhelper.py - Make sure these functions work
+# Add this function to your dbhelper.py
 def get_all_attendance():
-    """Get all attendance records WITH time_logged"""
-    try:
-        conn = get_db_connection()
-        if not conn:
-            return []
-            
-        cursor = conn.cursor()
-        cursor.execute("SELECT idno, lastname, firstname, course, level, time_logged FROM attendance ORDER BY time_logged DESC")
-        
-        columns = [desc[0] for desc in cursor.description]
-        records = cursor.fetchall()
-        
-        result = []
-        for record in records:
-            result.append(dict(zip(columns, record)))
-        
-        cursor.close()
-        conn.close()
-        return result
-        
-    except Exception as e:
-        print(f"Error getting attendance: {e}")
-        return []
+    """Get all attendance records, most recent first"""
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT idno, lastname, firstname, course, level, time_logged 
+        FROM attendance 
+        ORDER BY time_logged DESC
+    """)
+    
+    records = cursor.fetchall()
+    conn.close()
+    
+    # Convert to list of dictionaries
+    attendance_list = []
+    for record in records:
+        attendance_list.append({
+            'idno': record[0],
+            'lastname': record[1],
+            'firstname': record[2],
+            'course': record[3],
+            'level': record[4],
+            'time_logged': record[5]
+        })
+    
+    return attendance_list
 
 def delete_user(idno):
     """Delete user from database"""
@@ -341,5 +345,6 @@ def delete_user(idno):
     except Exception as e:
         print(f"Error deleting user: {e}")
         return False
+
 
 
