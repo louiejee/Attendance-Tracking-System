@@ -226,7 +226,7 @@ def api_attendance():
 
 # Student Management Routes
 @app.route("/delete_student/<idno>", methods=["DELETE"])
-def delete_student_route(idno):
+def delete_student(idno):
     if delete_user(idno):
         return jsonify({"success": True})
     return jsonify({"success": False})
@@ -307,6 +307,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
+
 
 
 
