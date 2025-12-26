@@ -1,6 +1,28 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<style>
+    /* ADDED: Delete button styles */
+    .delete-btn {
+        background: #e74c3c;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: background 0.3s;
+    }
+    
+    .delete-btn:hover {
+        background: #c0392b;
+    }
+    
+    .action-cell {
+        text-align: center;
+    }
+</style>
+
 <div class="w3-row" style="text-align: right; margin-right: 20px; margin-top: 10px;">
     <button class="w3-button w3-teal" onclick="window.location.href='/attendance'">VIEW ATTENDANCE</button>
     <button class="w3-button w3-teal" onclick="window.location.href='/add'">+ADD</button>
@@ -18,6 +40,7 @@
                     <th>COURSE</th>
                     <th>LEVEL</th>
                     <th>TIME LOGGED</th>
+                    <th class="action-cell">ACTION</th> <!-- ADDED: Action column -->
                 </tr>
             </thead>
             <tbody id="student-list">
@@ -56,6 +79,41 @@
         }
     }
 
+    // ADDED: Function to delete attendance record
+    async function deleteAttendance(idno, time_logged, rowElement) {
+        if (!confirm(`Are you sure you want to delete attendance for ${idno} at ${formatDateTime(time_logged)}?`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/delete_attendance', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    idno: idno,
+                    time_logged: time_logged
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert('Attendance record deleted successfully!');
+                // Remove the row from table
+                rowElement.remove();
+                // Reload attendance to update counts
+                loadAttendance();
+            } else {
+                alert('Failed to delete attendance: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error deleting attendance:', error);
+            alert('Error deleting attendance. Please try again.');
+        }
+    }
+
     // Load attendance from server
     function loadAttendance() {
         fetch('/api/attendance')
@@ -70,14 +128,15 @@
                 if (!attendanceList || attendanceList.length === 0) {
                     studentListContainer.innerHTML = `
                         <tr>
-                            <td colspan="6" class="w3-center">No attendance records found</td>
+                            <td colspan="7" class="w3-center">No attendance records found</td> <!-- Changed colspan to 7 -->
                         </tr>
                     `;
                     return;
                 }
 
-                attendanceList.forEach(function(record) {
+                attendanceList.forEach(function(record, index) {
                     const row = document.createElement('tr');
+                    row.id = `attendance-row-${index}`;
                     row.innerHTML = `
                         <td>${record.idno || 'N/A'}</td>
                         <td>${record.lastname || 'N/A'}</td>
@@ -85,6 +144,12 @@
                         <td>${record.course || 'N/A'}</td>
                         <td>${record.level || 'N/A'}</td>
                         <td>${formatDateTime(record.time_logged)}</td>
+                        <td class="action-cell">
+                            <button class="delete-btn" 
+                                    onclick="deleteAttendance('${record.idno}', '${record.time_logged}', this.parentElement.parentElement)">
+                                Delete
+                            </button>
+                        </td>
                     `;
                     studentListContainer.appendChild(row);
                 });
@@ -93,7 +158,7 @@
                 console.error('Error loading attendance:', error);
                 document.getElementById('student-list').innerHTML = `
                     <tr>
-                        <td colspan="6" class="w3-center w3-text-red">Error loading attendance records</td>
+                        <td colspan="7" class="w3-center w3-text-red">Error loading attendance records</td> <!-- Changed colspan to 7 -->
                     </tr>
                 `;
             });
@@ -162,7 +227,4 @@ document.addEventListener('DOMContentLoaded', loadLatestAttendance);
 setInterval(loadLatestAttendance, 5000);
 </script>
 
-
 {% endblock %}
-
-
