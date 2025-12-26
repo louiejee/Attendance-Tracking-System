@@ -58,10 +58,34 @@
     .student-card {
         background: #e7f3fe;
         border-left: 4px solid #2196F3;
-        padding: 15px;
+        padding: 20px;
         margin: 15px 0;
         border-radius: 5px;
         text-align: left;
+    }
+    
+    .student-photo {
+        width: 120px;
+        height: 120px;
+        border-radius: 10px;
+        object-fit: cover;
+        border: 3px solid #2196F3;
+        margin: 10px auto;
+        display: block;
+    }
+    
+    .photo-placeholder {
+        width: 120px;
+        height: 120px;
+        background: #ddd;
+        border-radius: 10px;
+        margin: 10px auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        font-size: 12px;
+        border: 3px solid #ccc;
     }
     
     .scan-again-btn {
@@ -73,16 +97,34 @@
         cursor: pointer;
         margin-top: 15px;
         font-weight: bold;
+        display: inline-block;
     }
     
     .scan-again-btn:hover {
         background: #218838;
     }
+    
+    .info-row {
+        display: flex;
+        margin: 8px 0;
+        padding: 5px 0;
+        border-bottom: 1px dashed #ddd;
+    }
+    
+    .info-label {
+        font-weight: bold;
+        width: 100px;
+        color: #555;
+    }
+    
+    .info-value {
+        flex: 1;
+        color: #333;
+    }
 </style>
 
 <div class="scanner-container">
-    <h1>ATTENDANCE CHECKER</h1>
-    <p><strong>Scan Student QR Code</strong></p>
+    <h1><strong>Scan Student QR Code</strong></h1>
     
     <!-- Current Time Display -->
     <div class="time-display">
@@ -98,18 +140,42 @@
     <!-- Student Info (shown after scan) -->
     <div id="student-info" style="display: none;">
         <div class="student-card">
-            <h3 style="color: #155724; margin-top: 0;">✅ Attendance Recorded</h3>
-            <p><strong>Student ID:</strong> <span id="info-idno"></span></p>
-            <p><strong>Name:</strong> <span id="info-name"></span></p>
-            <p><strong>Course:</strong> <span id="info-course"></span></p>
-            <p><strong>Year Level:</strong> <span id="info-level"></span></p>
+            <h3 style="color: #155724; margin-top: 0; text-align: center;">✅ Attendance Recorded</h3>
             
-            <!-- EXACT TIME LOGGED -->
-            <div class="time-display" style="background: #d1ecf1; margin-top: 10px;">
-                <strong>Time Logged:</strong> <span id="exact-time"></span>
+            <!-- STUDENT PHOTO -->
+            <div id="student-photo-container">
+                <!-- Photo will be inserted here -->
             </div>
             
-            <button onclick="scanAgain()" class="scan-again-btn">Scan Another Student</button>
+            <!-- Student Details -->
+            <div style="margin-top: 15px;">
+                <div class="info-row">
+                    <div class="info-label">Student ID:</div>
+                    <div class="info-value" id="info-idno"></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Name:</div>
+                    <div class="info-value" id="info-name"></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Course:</div>
+                    <div class="info-value" id="info-course"></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Year Level:</div>
+                    <div class="info-value" id="info-level"></div>
+                </div>
+                
+                <!-- EXACT TIME LOGGED -->
+                <div class="time-display" style="background: #d1ecf1; margin-top: 15px; text-align: center;">
+                    <strong>Time Logged:</strong><br>
+                    <span id="exact-time" style="font-family: monospace; font-size: 13px;"></span>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <button onclick="scanAgain()" class="scan-again-btn">Scan Another Student</button>
+            </div>
         </div>
     </div>
     
@@ -132,34 +198,39 @@ let isScanning = false;
 function updateTime() {
     const now = new Date();
     const timeString = now.toLocaleTimeString('en-US', {
-        hour12: true,
+        hour12: false,
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit'
     });
     const dateString = now.toLocaleDateString('en-US', {
         year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
+        month: '2-digit',
+        day: '2-digit'
+    }).replace(/\//g, '-');
     document.getElementById('current-time').textContent = `${dateString} ${timeString}`;
 }
 
-// Get EXACT timestamp in readable format
+// Get EXACT timestamp in proper format: "YYYY-MM-DD HH:MM:SS"
 function getExactTimestamp() {
     const now = new Date();
+    
+    // Format: YYYY-MM-DD HH:MM:SS AM/PM
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    
+    // Format for display (with AM/PM)
+    const displayHours = now.getHours() % 12 || 12;
+    const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
+    
     return {
-        iso: now.toISOString(), // For database
-        display: now.toLocaleTimeString('en-US', {
-            hour12: true,
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        }) + ' on ' + now.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        })
+        iso: `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`, // For database
+        display: `${year}-${month}-${day} ${displayHours}:${minutes}:${seconds} ${ampm}` // For display
     };
 }
 
@@ -232,7 +303,7 @@ async function onScanSuccess(decodedText) {
             throw new Error("No student ID found");
         }
         
-        // Get EXACT timestamp
+        // Get EXACT timestamp in correct format
         const timestamp = getExactTimestamp();
         
         // Show scanning message
@@ -242,7 +313,7 @@ async function onScanSuccess(decodedText) {
         const saved = await saveAttendance(student, timestamp.iso);
         
         if (saved) {
-            // Display success with student info
+            // Display success with student info AND PHOTO
             displayStudentInfo(student, timestamp.display);
         } else {
             showMessage("Failed to save attendance. Please try again.", "error");
@@ -257,7 +328,7 @@ async function onScanSuccess(decodedText) {
     }
 }
 
-// Display student information
+// Display student information with photo
 function displayStudentInfo(student, exactTime) {
     // Hide scanner
     document.getElementById('qr-reader').style.display = 'none';
@@ -273,8 +344,67 @@ function displayStudentInfo(student, exactTime) {
     document.getElementById('info-level').textContent = student.level || 'N/A';
     document.getElementById('exact-time').textContent = exactTime;
     
+    // Load student photo
+    loadStudentPhoto(student.idno);
+    
     // Show student info card
     document.getElementById('student-info').style.display = 'block';
+}
+
+// Load student photo from static/image folder
+function loadStudentPhoto(idno) {
+    const photoContainer = document.getElementById('student-photo-container');
+    
+    // Create image element
+    const img = document.createElement('img');
+    img.className = 'student-photo';
+    img.alt = 'Student Photo';
+    
+    // Try multiple possible image paths
+    const imagePaths = [
+        `static/image/${idno}.jpg`,
+        `static/image/${idno}.jpeg`,
+        `static/image/${idno}.png`,
+        `/static/image/${idno}.jpg`,
+        `/static/image/${idno}.jpeg`,
+        `/static/image/${idno}.png`
+    ];
+    
+    // Set the first image as source
+    img.src = imagePaths[0];
+    
+    // If image fails to load, try other paths
+    img.onerror = function() {
+        let found = false;
+        
+        // Try other image paths
+        for (let i = 1; i < imagePaths.length; i++) {
+            const testImg = new Image();
+            testImg.src = imagePaths[i];
+            
+            testImg.onload = function() {
+                if (!found) {
+                    found = true;
+                    img.src = imagePaths[i];
+                }
+            };
+        }
+        
+        // If no image found, show placeholder
+        setTimeout(() => {
+            if (img.src.includes('static/image')) {
+                photoContainer.innerHTML = `
+                    <div class="photo-placeholder">
+                        <div>No Photo<br>Available</div>
+                    </div>
+                `;
+            }
+        }, 500);
+    };
+    
+    // Clear container and add image
+    photoContainer.innerHTML = '';
+    photoContainer.appendChild(img);
 }
 
 // Save attendance to database
@@ -286,9 +416,11 @@ async function saveAttendance(student, timestamp) {
             firstname: student.firstname || '',
             course: student.course || '',
             level: student.level || '',
-            time_logged: timestamp  // EXACT timestamp
+            time_logged: timestamp  // EXACT timestamp in format: "2025-12-26 08:39:53"
         }
     };
+    
+    console.log("Saving attendance with timestamp:", timestamp);
     
     try {
         const response = await fetch('/scan_qr', {
