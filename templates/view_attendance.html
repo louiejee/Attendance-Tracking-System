@@ -34,49 +34,79 @@
 <script>
     // Function to format date and time
     function formatDateTime(dateString) {
-        const date = new Date(dateString);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
+        if (!dateString) return 'N/A';
+        
+        try {
+            const date = new Date(dateString);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
 
-        let hours = date.getHours();
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const ampm = hours >= 12 ? 'PM' : 'AM';
+            let hours = date.getHours();
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
 
-        hours = hours % 12;
-        hours = hours ? hours : 12;
+            hours = hours % 12;
+            hours = hours ? hours : 12; // 0 becomes 12
 
-        return `${year}-${month}-${day} ${hours}:${minutes} ${ampm}`;
+            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds} ${ampm}`;
+        } catch (e) {
+            return dateString;
+        }
     }
 
     // Load attendance from server
     function loadAttendance() {
         fetch('/api/attendance')
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load attendance');
+                return response.json();
+            })
             .then(attendanceList => {
                 const studentListContainer = document.getElementById('student-list');
                 studentListContainer.innerHTML = '';
 
+                if (!attendanceList || attendanceList.length === 0) {
+                    studentListContainer.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="w3-center">No attendance records found</td>
+                        </tr>
+                    `;
+                    return;
+                }
+
                 attendanceList.forEach(function(record) {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td>${record.idno}</td>
-                        <td>${record.lastname}</td>
-                        <td>${record.firstname}</td>
-                        <td>${record.course}</td>
-                        <td>${record.level}</td>
+                        <td>${record.idno || 'N/A'}</td>
+                        <td>${record.lastname || 'N/A'}</td>
+                        <td>${record.firstname || 'N/A'}</td>
+                        <td>${record.course || 'N/A'}</td>
+                        <td>${record.level || 'N/A'}</td>
                         <td>${formatDateTime(record.time_logged)}</td>
                     `;
                     studentListContainer.appendChild(row);
                 });
+            })
+            .catch(error => {
+                console.error('Error loading attendance:', error);
+                document.getElementById('student-list').innerHTML = `
+                    <tr>
+                        <td colspan="6" class="w3-center w3-text-red">Error loading attendance records</td>
+                    </tr>
+                `;
             });
     }
 
     // Load attendance on page load
     window.onload = function() {
         loadAttendance();
+        // Refresh every 10 seconds to see new scans
+        setInterval(loadAttendance, 10000);
     };
 </script>
 
 
 {% endblock %}
+
