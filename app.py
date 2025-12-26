@@ -94,6 +94,12 @@ def get_student_info(student_id):
 def attendance():
     return render_template("view_attendance.html", pagetitle="ATTENDANCE CHECKER")
 
+@app.route("/api/attendance")
+def api_attendance():
+    """API endpoint to get all attendance records"""
+    attendance = get_all_attendance()
+    return jsonify(attendance)
+
 # Scan QR Code and Log Attendance
 @app.route("/scan_qr", methods=["POST"])
 def scan_qr():
@@ -223,6 +229,7 @@ if __name__ == "__main__":
 # Add this after app.secret_key
 from dbhelper_render import initialize_database
 initialize_database()
+
 
 
 
