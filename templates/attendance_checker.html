@@ -9,6 +9,23 @@
         </div>
     </div>
 
+    <div class="container">
+    <h1>ATTENDANCE CHECKER</h1>
+    
+    <!-- QR Scanner Section -->
+    <div class="scanner-section">
+        <h2>Scan Student QR Code</h2>
+        <div id="qr-reader" style="width: 100%; max-width: 500px; margin: 0 auto;"></div>
+        <div id="scan-result"></div>
+    </div>
+    
+    <!-- Link to view attendance -->
+    <div style="margin-top: 20px;">
+        <p>After scanning, you will be redirected to the attendance page.</p>
+        <a href="/attendance" class="btn">View Attendance Records</a>
+    </div>
+</div>
+
     <!-- Modal Container -->
     <div id="student-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); z-index: 1000; justify-content: center; align-items: center;">
         <div style="background: #fff; padding: 20px; border-radius: 10px; width: 350px; text-align: center; position: relative;">
@@ -256,5 +273,6 @@ document.addEventListener('DOMContentLoaded', initQRScanner);
     </script>
 
 {% endblock %}
+
 
 
