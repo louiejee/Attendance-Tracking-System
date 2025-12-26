@@ -97,5 +97,32 @@ def insert_user(idno, lastname, firstname, course, level):
         print(traceback.format_exc())
         return False
 
-# ... rest of your functions
+def check_user_exists(idno):
+    """Check if a user with given IDNO already exists"""
+    print(f"Checking if user exists: {idno}")
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        if USE_POSTGRESQL:
+            sql = "SELECT idno FROM users WHERE idno = %s"
+        else:
+            sql = "SELECT idno FROM users WHERE idno = %s"
+        
+        cursor.execute(sql, (idno,))
+        result = cursor.fetchone()
+        
+        cursor.close()
+        conn.close()
+        
+        exists = result is not None
+        print(f"User {idno} exists: {exists}")
+        return exists
+        
+    except Exception as e:
+        print(f"Error checking user existence: {e}")
+        print(traceback.format_exc())
+        return False  # Return False on error to allow trying
+
 
