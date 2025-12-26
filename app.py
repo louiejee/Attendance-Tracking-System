@@ -16,6 +16,44 @@ app.secret_key = '@#$@#$@#$'
 os.makedirs('static/qrcode', exist_ok=True)
 os.makedirs('static/image', exist_ok=True)
 
+@app.route("/api/students")
+def api_students():
+    """API endpoint to get all students"""
+    students = get_all_users_formatted()
+    return jsonify(students)
+
+@app.route("/api/student/<idno>")
+def api_student(idno):
+    """API endpoint to get single student"""
+    student = get_student_by_id(idno)
+    if student:
+        return jsonify(student)
+    return jsonify(None)
+
+# Fix the existing scan_qr route to save to database
+@app.route("/scan_qr", methods=["POST"])
+def scan_qr():
+    qr_data = request.get_json()
+    student_info = qr_data.get('student_info', {})
+
+    if student_info:
+        time_logged = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Get student from database first
+        student = get_student_by_id(student_info['id'])
+        
+        if student:
+            insert_attendance(
+                student['idno'],
+                student['lastname'],
+                student['firstname'],
+                student['course'],
+                student['level'],
+                time_logged
+            )
+            return jsonify({"success": True})
+    
+    return jsonify({"success": False, "error": "Student not found"})
 
 # User Validation
 @app.route("/validateuser", methods=['POST'])
@@ -185,6 +223,7 @@ if __name__ == "__main__":
 # Add this after app.secret_key
 from dbhelper_render import initialize_database
 initialize_database()
+
 
 
 
