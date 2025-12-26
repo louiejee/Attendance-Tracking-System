@@ -71,7 +71,31 @@ def get_all_users_formatted():
     return []
 
 def insert_user(idno, lastname, firstname, course, level):
-    print(f"Would insert: {idno}")
-    return True
+    """Insert new user into database"""
+    print(f"Inserting user: {idno}, {lastname}, {firstname}, {course}, {level}")
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        if USE_POSTGRESQL:
+            sql = "INSERT INTO users (idno, lastname, firstname, course, level) VALUES (%s, %s, %s, %s, %s)"
+        else:
+            sql = "INSERT INTO users (idno, lastname, firstname, course, level) VALUES (%s, %s, %s, %s, %s)"
+        
+        cursor.execute(sql, (idno, lastname, firstname, course, level))
+        conn.commit()
+        
+        print(f"✓ User {idno} inserted successfully")
+        
+        cursor.close()
+        conn.close()
+        return True
+        
+    except Exception as e:
+        print(f"✗ Error inserting user: {e}")
+        print(traceback.format_exc())
+        return False
 
 # ... rest of your functions
+
