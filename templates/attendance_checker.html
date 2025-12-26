@@ -102,34 +102,87 @@
                 }, 100); // Scan every 100ms
             }
 
-            function processQRCodeData(qrData) {
-                // Split the QR code data into individual parts
-                const dataParts = qrData.split(',');
+            <script>
+    function processQRCodeData(qrData) {
+        // Split the QR code data into individual parts
+        const dataParts = qrData.split(',');
 
-                // Check if the data contains 5 parts (idno, lastname, firstname, course, level)
-                if (dataParts.length === 5) {
-                    const idno = dataParts[0].trim();
-                    const lastname = dataParts[1].trim();
-                    const firstname = dataParts[2].trim();
-                    const course = dataParts[3].trim();
-                    const level = dataParts[4].trim();
+        // Check if the data contains 5 parts (idno, lastname, firstname, course, level)
+        if (dataParts.length === 5) {
+            const idno = dataParts[0].trim();
+            const lastname = dataParts[1].trim();
+            const firstname = dataParts[2].trim();
+            const course = dataParts[3].trim();
+            const level = dataParts[4].trim();
 
-                    // Populate the modal with the student data
-                    document.getElementById('my_idno').innerHTML = idno;
-                    document.getElementById('my_lastname').innerHTML = lastname;
-                    document.getElementById('my_firstname').innerHTML = firstname;
-                    document.getElementById('my_course').innerHTML = course;
-                    document.getElementById('my_level').innerHTML = level;
+            // Populate the modal with the student data
+            document.getElementById('my_idno').innerHTML = idno;
+            document.getElementById('my_lastname').innerHTML = lastname;
+            document.getElementById('my_firstname').innerHTML = firstname;
+            document.getElementById('my_course').innerHTML = course;
+            document.getElementById('my_level').innerHTML = level;
 
-                    // Dynamically set the student image path
-                    document.getElementById('student-image').src = `static/image/${idno}.jpg`;
+            // Dynamically set the student image path
+            document.getElementById('student-image').src = `static/image/${idno}.jpg`;
 
-                    // Show the modal
-                    document.getElementById('student-modal').style.display = 'flex';
-                } else {
-                    alert("Error: No Student Found");
-                }
+            // Show the modal
+            document.getElementById('student-modal').style.display = 'flex';
+            
+            // ✅ CRITICAL: SAVE ATTENDANCE TO DATABASE
+            saveAttendanceToDatabase(idno, lastname, firstname, course, level);
+            
+        } else {
+            alert("Error: Invalid QR Code format");
+        }
+    }
+    
+    function saveAttendanceToDatabase(idno, lastname, firstname, course, level) {
+        // Get current timestamp
+        const now = new Date();
+        const timeLogged = now.toISOString().slice(0, 19).replace('T', ' ');
+        
+        // Prepare data to send to server
+        const attendanceData = {
+            student_info: {
+                idno: idno,
+                lastname: lastname,
+                firstname: firstname,
+                course: course,
+                level: level,
+                time_logged: timeLogged
             }
+        };
+        
+        console.log("Saving attendance for:", idno, "at", timeLogged);
+        
+        // Send to server
+        fetch('/scan_qr', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(attendanceData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log("✓ Attendance saved successfully!");
+                // Optional: Show success message
+                setTimeout(() => {
+                    alert(`Attendance recorded for ${firstname} ${lastname} at ${now.toLocaleTimeString()}`);
+                }, 500);
+            } else {
+                console.error("✗ Failed to save attendance:", data.error);
+                alert("Failed to save attendance. Check console.");
+            }
+        })
+        .catch(error => {
+            console.error('Error saving attendance:', error);
+        });
+    }
+    
+    // Rest of your existing code...
+</script>
 
             // Close Modal Logic
             document.getElementById('close-modal').onclick = function() {
@@ -145,4 +198,5 @@
             };
         };
     </script>
+
 {% endblock %}
