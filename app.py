@@ -258,6 +258,24 @@ def api_attendance():
     attendance = get_all_attendance()
     return jsonify(attendance)
 
+# Add this route to your app.py
+@app.route("/get_attendance")
+def get_attendance():
+    """Get all attendance records"""
+    try:
+        # You need to implement this function in dbhelper.py
+        attendance_records = get_all_attendance()
+        
+        return jsonify({
+            'success': True,
+            'attendance': attendance_records
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
 # Student Management Routes
 @app.route("/delete_student/<idno>", methods=["DELETE"])
 def delete_student(idno):
@@ -341,6 +359,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
+
 
 
 
