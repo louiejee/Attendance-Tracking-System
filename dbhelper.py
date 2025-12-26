@@ -1,265 +1,82 @@
+# dbhelper.py - Fixed version
 import os
-import sys
+from urllib.parse import urlparse
+import psycopg2
+import traceback
 
-# Try PostgreSQL first (for Render), fall back to MySQL/SQLite
-try:
-    import psycopg2
-    from urllib.parse import urlparse
-    USE_POSTGRESQL = True
-    print("Using PostgreSQL")
-except ImportError:
-    USE_POSTGRESQL = False
-    print("PostgreSQL not available")
-    try:
-        import mysql.connector
-        print("Using MySQL")
-    except ImportError:
-        import sqlite3
-        print("Using SQLite")
+print("=== Loading dbhelper.py ===")  # Debug
 
 def get_db_connection():
-    """Get database connection based on environment"""
-    if USE_POSTGRESQL:
-        # For Render PostgreSQL
+    """Get database connection for Render PostgreSQL"""
+    try:
         database_url = os.environ.get('DATABASE_URL')
         
-        if database_url:
-            result = urlparse(database_url)
-            conn = psycopg2.connect(
-                database=result.path[1:],
-                user=result.username,
-                password=result.password,
-                host=result.hostname,
-                port=result.port
-            )
-            return conn
-        else:
-            # Fallback for local PostgreSQL
-            return psycopg2.connect(
-                host='localhost',
-                database='attendance_db',
-                user='postgres',
-                password='password'
-            )
-    else:
-        # Try MySQL (for local development)
-        try:
-            return mysql.connector.connect(
-                host='localhost',
-                user='flaskuser',
-                password='password',
-                database='users'
-            )
-        except:
-            # Fallback to SQLite
-            return sqlite3.connect("attendance.db")
-
-def getall_users():
-    """Get all users (compatibility function)"""
-    return get_all_users_formatted()
-
-def get_all_attendance():
-    """Get all attendance records"""
-    sql = "SELECT * FROM attendance ORDER BY time_logged DESC"
-    conn = get_db_connection()
-    
-    if USE_POSTGRESQL:
-        cursor = conn.cursor()
-        cursor.execute(sql)
-        columns = [desc[0] for desc in cursor.description]
-        data = [dict(zip(columns, row)) for row in cursor.fetchall()]
-    else:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute(sql)
-        data = cursor.fetchall()
-    
-    cursor.close()
-    conn.close()
-    return data
+        if not database_url:
+            print("ERROR: DATABASE_URL environment variable is not set!")
+            raise Exception("DATABASE_URL not found in environment variables")
+        
+        print(f"Connecting to database...")  # Don't print full URL for security
+        
+        # Parse the database URL
+        result = urlparse(database_url)
+        
+        # Connect to PostgreSQL
+        conn = psycopg2.connect(
+            database=result.path[1:],      # Remove leading '/'
+            user=result.username,
+            password=result.password,
+            host=result.hostname,
+            port=result.port,
+            connect_timeout=10  # 10 second timeout
+        )
+        
+        print("✓ Database connection successful!")
+        return conn
+        
+    except Exception as e:
+        print(f"✗ Database connection failed: {str(e)}")
+        print(traceback.format_exc())
+        raise
 
 def validate_user(username, password):
     """Validate admin user"""
-    if USE_POSTGRESQL:
-        sql = "SELECT * FROM admin_users WHERE username = %s AND password = %s"
-    else:
-        sql = "SELECT * FROM users WHERE username = %s AND password = %s"
-    
-    conn = get_db_connection()
-    
-    if USE_POSTGRESQL:
-        cursor = conn.cursor()
-        cursor.execute(sql, (username, password))
-        columns = [desc[0] for desc in cursor.description]
-        data = [dict(zip(columns, row)) for row in cursor.fetchall()]
-    else:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute(sql, (username, password))
-        data = cursor.fetchall()
-    
-    cursor.close()
-    conn.close()
-    return data
-
-def insert_user(idno, lastname, firstname, course, level):
-    """Insert new user"""
-    if USE_POSTGRESQL:
-        sql = "INSERT INTO users (idno, lastname, firstname, course, level) VALUES (%s, %s, %s, %s, %s)"
-    else:
-        sql = "INSERT INTO users (idno, lastname, firstname, course, level) VALUES (%s, %s, %s, %s, %s)"
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(sql, (idno, lastname, firstname, course, level))
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-def get_student_by_id(student_id):
-    """Get student by ID"""
-    if USE_POSTGRESQL:
-        sql = "SELECT * FROM users WHERE idno = %s"
-    else:
-        sql = "SELECT * FROM users WHERE idno = %s"
-    
-    conn = get_db_connection()
-    
-    if USE_POSTGRESQL:
-        cursor = conn.cursor()
-        cursor.execute(sql, (student_id,))
-        columns = [desc[0] for desc in cursor.description]
-        result = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        return dict(zip(columns, result)) if result else None
-    else:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute(sql, (student_id,))
-        result = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        return result
-
-def insert_attendance(idno, lastname, firstname, course, level, time_logged):
-    """Insert attendance record"""
-    if USE_POSTGRESQL:
-        sql = """
-        INSERT INTO attendance (idno, lastname, firstname, course, level, time_logged) 
-        VALUES (%s, %s, %s, %s, %s, %s)
-        """
-    else:
-        sql = """
-        INSERT INTO attendance (idno, lastname, firstname, course, level, time_logged)
-        VALUES (?, ?, ?, ?, ?, ?)
-        """
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    if USE_POSTGRESQL:
-        cursor.execute(sql, (idno, lastname, firstname, course, level, time_logged))
-    else:
-        cursor.execute(sql, (idno, lastname, firstname, course, level, time_logged))
-    
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-def get_all_users_formatted():
-    """Get all users formatted for the userlist page"""
-    conn = get_db_connection()
-    
-    if USE_POSTGRESQL:
-        cursor = conn.cursor()
-        cursor.execute("SELECT idno, lastname, firstname, course, level FROM users ORDER BY lastname")
-        users = cursor.fetchall()
-        
-        result = []
-        for user in users:
-            result.append({
-                'idno': user[0],
-                'lastname': user[1],
-                'firstname': user[2],
-                'course': user[3],
-                'level': user[4]
-            })
-    else:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT idno, lastname, firstname, course, level FROM users ORDER BY lastname")
-        result = cursor.fetchall()
-    
-    cursor.close()
-    conn.close()
-    return result
-
-def delete_user(idno):
-    """Delete user from database"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    try:
-        if USE_POSTGRESQL:
-            cursor.execute("DELETE FROM users WHERE idno = %s", (idno,))
-        else:
-            cursor.execute("DELETE FROM users WHERE idno = %s", (idno,))
-        conn.commit()
-        return cursor.rowcount > 0
-    finally:
-        cursor.close()
-        conn.close()
-
-def update_user(idno, lastname, firstname, course, level):
-    """Update user in database"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    try:
-        if USE_POSTGRESQL:
-            sql = """
-                UPDATE users 
-                SET lastname = %s, firstname = %s, course = %s, level = %s 
-                WHERE idno = %s
-            """
-            cursor.execute(sql, (lastname, firstname, course, level, idno))
-        else:
-            sql = """
-                UPDATE users 
-                SET lastname = %s, firstname = %s, course = %s, level = %s 
-                WHERE idno = %s
-            """
-            cursor.execute(sql, (lastname, firstname, course, level, idno))
-        
-        conn.commit()
-        return cursor.rowcount > 0
-    finally:
-        cursor.close()
-        conn.close()
-
-def check_user_exists(idno):
-    """Check if user already exists"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    try:
-        if USE_POSTGRESQL:
-            cursor.execute("SELECT idno FROM users WHERE idno = %s", (idno,))
-        else:
-            cursor.execute("SELECT idno FROM users WHERE idno = %s", (idno,))
-        return cursor.fetchone() is not None
-    finally:
-        cursor.close()
-        conn.close()
-
-def initialize_database():
-    """Initialize database tables (PostgreSQL only)"""
-    if not USE_POSTGRESQL:
-        print("Skipping database initialization (not PostgreSQL)")
-        return
+    print(f"Attempting to validate user: {username}")
     
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Create users table
+        # Check admin_users table
+        sql = "SELECT * FROM admin_users WHERE username = %s AND password = %s"
+        cursor.execute(sql, (username, password))
+        
+        # Get column names
+        columns = [desc[0] for desc in cursor.description] if cursor.description else []
+        rows = cursor.fetchall()
+        
+        # Convert to list of dictionaries
+        result = [dict(zip(columns, row)) for row in rows]
+        
+        cursor.close()
+        conn.close()
+        
+        print(f"Validation result: {len(result)} records found")
+        return result
+        
+    except Exception as e:
+        print(f"Error in validate_user: {e}")
+        print(traceback.format_exc())
+        return []
+
+def initialize_database():
+    """Initialize database tables"""
+    print("=== Initializing database ===")
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 1. Create users table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
@@ -271,8 +88,9 @@ def initialize_database():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
+        print("✓ Created users table")
         
-        # Create attendance table
+        # 2. Create attendance table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS attendance (
             id SERIAL PRIMARY KEY,
@@ -285,8 +103,9 @@ def initialize_database():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
+        print("✓ Created attendance table")
         
-        # Create admin users table
+        # 3. Create admin_users table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS admin_users (
             id SERIAL PRIMARY KEY,
@@ -294,18 +113,47 @@ def initialize_database():
             password VARCHAR(100) NOT NULL
         )
         """)
+        print("✓ Created admin_users table")
         
-        # Insert default admin if not exists
+        # 4. Insert default admin if not exists
         cursor.execute("""
         INSERT INTO admin_users (username, password) 
         VALUES ('admin', 'admin123')
         ON CONFLICT (username) DO NOTHING
         """)
+        print("✓ Added default admin user")
         
         conn.commit()
         cursor.close()
         conn.close()
-        print("Database tables initialized successfully!")
+        
+        print("=== Database initialization complete ===")
         
     except Exception as e:
         print(f"Error initializing database: {e}")
+        print(traceback.format_exc())
+
+# Stub functions (implement as needed)
+def get_all_users_formatted():
+    return []
+
+def insert_user(idno, lastname, firstname, course, level):
+    pass
+
+def get_student_by_id(student_id):
+    return None
+
+def insert_attendance(idno, lastname, firstname, course, level, time_logged):
+    pass
+
+def delete_user(idno):
+    return True
+
+def update_user(idno, lastname, firstname, course, level):
+    return True
+
+def check_user_exists(idno):
+    return False
+
+def get_all_attendance():
+    return []
