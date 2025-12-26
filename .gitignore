@@ -12,5 +12,8 @@ instance/
 *.log
 static/qrcode/*
 static/image/*
+static/qr_codes/*
 !static/qrcode/.gitkeep
 !static/image/.gitkeep
+!static/qr_codes/.gitkeep
+.env
