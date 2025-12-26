@@ -3,109 +3,124 @@
 {% block content %}
     <div class="w3-row" style="text-align: right; margin-right: 20px; margin-top: 10px;">
         <button class="w3-button w3-teal" onclick="window.location.href='/attendance'">VIEW ATTENDANCE</button>
-        <button class="w3-button w3-teal" onclick="window.location.href='/add'">+ADD</button>
-        <button class="w3-button w3-teal" onclick="window.location.href='/'">LOGOUT</button>
+        <button class="w3-button w3-teal" onclick="window.location.href='/userlist'">VIEW STUDENTS</button>
+        <button class="w3-button w3-teal" onclick="window.location.href='/logout'">LOGOUT</button>
     </div>
+    
+    {% if error %}
+    <div class="w3-panel w3-red w3-display-container">
+        <span onclick="this.parentElement.style.display='none'"
+              class="w3-button w3-large w3-display-topright">&times;</span>
+        <h3>Error!</h3>
+        <p>{{ error }}</p>
+    </div>
+    {% endif %}
+    
     <div class="w3-row-padding">
         <!-- Left Column: Form Section -->
         <div class="w3-half">
             <div class="w3-container w3-padding w3-round-xlarge w3-card-4">
                 <div id="my_camera" style="width:300px; height:150px;margin:auto"></div>
-                <p>
-                    <label><b>IDNO</b></label>
-                    <input type="text" name="idno" id="idno" class="w3-input">
-                </p>
-                <p>
-                    <label><b>LASTNAME</b></label>
-                    <input type="text" name="lastname" id="lastname" class="w3-input">
-                </p>
-                <p>
-                    <label><b>FIRSTNAME</b></label>
-                    <input type="text" name="firstname" id="firstname" class="w3-input">
-                </p>
-                <p>
-                    <label><b>COURSE</b></label>
-                    <div class="input-container">
-                        <select name="course" id="course" class="w3-input">
-                            <option value=""></option>
-                            <option value="BSIT">BSIT</option>
-                            <option value="BSCS">BSCS</option>
-                            <option value="BSECE">BSECE</option>
-                            <option value="BSCpE">BSCpE</option>
-                        </select>
-                    </div>
-                </p>
-                <p>
-                    <label><b>LEVEL</b></label>
-                    <div class="input-container">
-                        <select name="level" id="level" class="w3-input">
-                            <option value=""></option>
-                            <option value="1">1st Year</option>
-                            <option value="2">2nd Year</option>
-                            <option value="3">3rd Year</option>
-                            <option value="4">4th Year</option>
-                        </select>
-                    </div>
-                </p>
-                <button class="w3-button w3-light-blue snap-button" onclick="take_snapshot()">SNAP</button>
+                
+                <!-- ACTUAL FORM for submission -->
+                <form id="studentForm" method="POST" action="/add_student">
+                    <p>
+                        <label><b>IDNO</b></label>
+                        <input type="text" name="idno" id="idno" class="w3-input" required>
+                    </p>
+                    <p>
+                        <label><b>LASTNAME</b></label>
+                        <input type="text" name="lastname" id="lastname" class="w3-input" required>
+                    </p>
+                    <p>
+                        <label><b>FIRSTNAME</b></label>
+                        <input type="text" name="firstname" id="firstname" class="w3-input" required>
+                    </p>
+                    <p>
+                        <label><b>COURSE</b></label>
+                        <div class="input-container">
+                            <select name="course" id="course" class="w3-input" required>
+                                <option value="">Select Course</option>
+                                <option value="BSIT">BSIT</option>
+                                <option value="BSCS">BSCS</option>
+                                <option value="BSECE">BSECE</option>
+                                <option value="BSCpE">BSCpE</option>
+                            </select>
+                        </div>
+                    </p>
+                    <p>
+                        <label><b>LEVEL</b></label>
+                        <div class="input-container">
+                            <select name="level" id="level" class="w3-input" required>
+                                <option value="">Select Year Level</option>
+                                <option value="1">1st Year</option>
+                                <option value="2">2nd Year</option>
+                                <option value="3">3rd Year</option>
+                                <option value="4">4th Year</option>
+                            </select>
+                        </div>
+                    </p>
+                    
+                    <!-- Hidden fields for image and QR code -->
+                    <input type="hidden" name="image_data" id="image_data">
+                    <input type="hidden" name="qr_code_data" id="qr_code_data">
+                    
+                    <button type="button" class="w3-button w3-light-blue snap-button" onclick="take_snapshot()">SNAP PHOTO</button>
+                </form>
             </div>
         </div>
 
-        <!-- Right Column: Display Section (Image, QR Code, Table) -->
+        <!-- Right Column: Display Section -->
         <div class="w3-half">
             <div class="w3-container w3-padding w3-round-xlarge w3-card-4">
                 <!-- Container for Image and QR Code -->
                 <div class="image-qr-container">
                     <!-- Image Display Section -->
-                    <div id="my_result" style="margin-right: 20px;"></div>
+                    <div id="my_result" style="margin-right: 20px; min-height: 150px;">
+                        <p class="w3-text-grey">Photo will appear here after taking snapshot</p>
+                    </div>
                     <!-- QR Code Section -->
-                    <div id="my_qr_code">
+                    <div id="my_qr_code" style="min-height: 150px;">
+                        <p class="w3-text-grey">QR Code will appear here</p>
                         <img id="generated_qr_code" src="" alt="QR Code" width="150" height="150" style="display: none;">
                     </div>
                 </div>
-                <!-- Table Displaying User Data -->
+                
+                <!-- Preview Table -->
                 <div class="table-container">
-                    <table class="w3-table-all" style="margin-top: 120px; text-align: center;">
+                    <table class="w3-table-all" style="margin-top: 20px; text-align: center;">
                         <tr>
                             <td>IDNO</td>
                             <td>:</td>
-                            <td>
-                                <div id="my_idno"></div>
-                            </td>
+                            <td><div id="my_idno">-</div></td>
                         </tr>
                         <tr>
                             <td>LASTNAME</td>
                             <td>:</td>
-                            <td>
-                                <div id="my_lastname"></div>
-                            </td>
+                            <td><div id="my_lastname">-</div></td>
                         </tr>
                         <tr>
                             <td>FIRSTNAME</td>
                             <td>:</td>
-                            <td>
-                                <div id="my_firstname"></div>
-                            </td>
+                            <td><div id="my_firstname">-</div></td>
                         </tr>
                         <tr>
                             <td>COURSE</td>
                             <td>:</td>
-                            <td>
-                                <div id="my_course"></div>
-                            </td>
+                            <td><div id="my_course">-</div></td>
                         </tr>
                         <tr>
                             <td>LEVEL</td>
                             <td>:</td>
-                            <td>
-                                <div id="my_level"></div>
-                            </td>
+                            <td><div id="my_level">-</div></td>
                         </tr>
                     </table>
                 </div>
+                
+                <!-- Action Buttons -->
                 <div class="button-container">
-                    <button class="w3-button w3-indigo action-button" onclick="save_student_info()">SAVE</button>
-                    <button class="w3-button w3-red action-button" onclick="cancel_form()">CANCEL</button>
+                    <button class="w3-button w3-indigo action-button" onclick="saveStudent()">SAVE STUDENT</button>
+                    <button class="w3-button w3-red action-button" onclick="cancelForm()">CANCEL</button>
                 </div>
             </div>
         </div>
@@ -118,40 +133,29 @@
             width: 100%;
         }
 
-        .input-container i {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-        }
-
         .w3-input {
-            padding-right: 30px; /* Space for the icon */
-            width: 100%; /* Make the input field take up more space */
+            padding-right: 30px;
+            width: 100%;
         }
 
-        /* Center the "SNAP" Button and Make it Longer */
         .snap-button {
             display: block;
-            margin: 20px auto; /* Center the button */
-            width: 80%; /* Set width to 80% of the container, or adjust as needed */
+            margin: 20px auto;
+            width: 80%;
         }
 
-        /* Center and make the Save and Cancel buttons longer */
         .button-container {
             display: flex;
-            justify-content: center; /* Center the buttons horizontally */
+            justify-content: center;
             margin-top: 20px;
-            gap: 10px; /* Space between the buttons */
+            gap: 10px;
         }
 
         .action-button {
-            width: 40%; /* Make the buttons longer */
-            padding: 15px; /* Make the buttons taller */
+            width: 40%;
+            padding: 15px;
         }
 
-        /* Center the table and the content */
         .table-container {
             display: flex;
             justify-content: center;
@@ -159,7 +163,7 @@
         }
 
         table {
-            width: 50%; /* Adjust the table width */
+            width: 50%;
         }
 
         td {
@@ -168,161 +172,189 @@
 
         .w3-table-all {
             margin: auto;
-            width: 80%; /* Adjust width as needed */
+            width: 80%;
         }
 
-        /* Flexbox container for image and QR code */
         .image-qr-container {
-            display: flex; /* Arrange items side by side */
-            justify-content: center; /* Center items horizontally */
-            align-items: center; /* Align items vertically */
-            margin-top: 20px; /* Add some space above */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            margin-top: 20px;
+            gap: 20px;
         }
 
         #my_result img {
-            border: 2px solid #ddd; /* Optional: Add a border to the image */
-            border-radius: 10px; /* Optional: Rounded corners */
-            width: 200px; /* Adjust width as needed */
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            width: 200px;
             height: auto;
-        }
-
-        #generated_qr_code {
-            display: inline; /* Ensure the QR code appears properly */
         }
     </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/webcamjs/1.0.26/webcam.min.js"></script>
+    <script>
+        // Global variables to store data
+        let currentImageData = null;
+        let currentQRCodeData = null;
+        
+        // Configure Webcam
+        Webcam.set({
+            width: 320,
+            height: 240,
+            dest_width: 320,
+            dest_height: 240,
+            image_format: 'jpeg',
+            jpeg_quality: 90,
+            force_flash: false,
+            flip_horiz: true,
+            fps: 45
+        });
 
-<script language="JavaScript">
-    // Configure Webcam Settings
-    Webcam.set({
-        width: 320,
-        height: 240,
-        dest_width: 320,
-        dest_height: 240,
-        image_format: 'jpeg',
-        jpeg_quality: 90,
-        force_flash: false,
-        flip_horiz: true,
-        fps: 45
-    });
+        Webcam.attach('#my_camera');
+        
+        function take_snapshot() {
+            // Validate form fields
+            const idno = document.getElementById('idno').value.trim();
+            const lastname = document.getElementById('lastname').value.trim();
+            const firstname = document.getElementById('firstname').value.trim();
+            const course = document.getElementById('course').value;
+            const level = document.getElementById('level').value;
 
-    // Attach the Webcam to the 'my_camera' div
-    Webcam.attach('#my_camera');
-    
-    function take_snapshot() {
-        // Get values from the form fields
-        var idno = document.getElementById('idno').value.trim();
-        var lastname = document.getElementById('lastname').value.trim();
-        var firstname = document.getElementById('firstname').value.trim();
-        var course = document.getElementById('course').value.trim();
-        var level = document.getElementById('level').value.trim();
+            if (!idno || !lastname || !firstname || !course || !level) {
+                alert("Please fill in ALL fields before taking a snapshot.");
+                return;
+            }
 
-        // Validate if any field is empty
-        if (!idno || !lastname || !firstname || !course || !level) {
-            alert("Please fill in all fields before taking a snapshot.");
-            return;
+            // Take snapshot
+            Webcam.snap(function(data_uri) {
+                // Store image data
+                currentImageData = data_uri;
+                
+                // Display preview
+                document.getElementById('my_result').innerHTML = '<img src="'+data_uri+'"/>';
+                
+                // Update preview table
+                document.getElementById('my_idno').textContent = idno;
+                document.getElementById('my_lastname').textContent = lastname;
+                document.getElementById('my_firstname').textContent = firstname;
+                document.getElementById('my_course').textContent = course;
+                document.getElementById('my_level').textContent = level;
+                
+                // Generate QR Code
+                const qrData = `${idno},${lastname},${firstname},${course},${level}`;
+                const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=150x150`;
+                
+                // Display QR Code
+                document.getElementById('generated_qr_code').src = qrCodeUrl;
+                document.getElementById('generated_qr_code').style.display = 'inline';
+                document.getElementById('my_qr_code').innerHTML = '';
+                document.getElementById('my_qr_code').appendChild(document.getElementById('generated_qr_code'));
+                
+                // Store QR code data
+                currentQRCodeData = qrCodeUrl;
+                
+                alert("Snapshot taken! Click SAVE STUDENT to save.");
+            });
         }
+        
+        function saveStudent() {
+            // Get form values
+            const idno = document.getElementById('idno').value.trim();
+            const lastname = document.getElementById('lastname').value.trim();
+            const firstname = document.getElementById('firstname').value.trim();
+            const course = document.getElementById('course').value;
+            const level = document.getElementById('level').value;
 
-        // Take the snapshot
-        Webcam.snap(function(data_uri) {
-            // Show the snapshot image in the 'my_result' div
-            document.getElementById('my_result').innerHTML = '<img src="'+data_uri+'"/>';
+            // Validate
+            if (!idno || !lastname || !firstname || !course || !level) {
+                alert("Please fill in ALL fields.");
+                return;
+            }
             
-            // Send image data to the server to save
+            if (!currentImageData) {
+                alert("Please take a snapshot first.");
+                return;
+            }
+
+            // Show loading
+            const saveBtn = document.querySelector('button[onclick="saveStudent()"]');
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = "Saving...";
+            saveBtn.disabled = true;
+
+            // 1. Save image to server
             fetch('/save_image', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    image_data: data_uri,
+                    image_data: currentImageData,
                     idno: idno
                 })
             })
             .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    console.log('Image saved successfully!');
+            .then(imageResult => {
+                if (!imageResult.success) {
+                    throw new Error('Failed to save image');
                 }
-            });
-
-            // Display the entered student data
-            document.getElementById('my_idno').innerHTML = idno;
-            document.getElementById('my_lastname').innerHTML = lastname;
-            document.getElementById('my_firstname').innerHTML = firstname;
-            document.getElementById('my_course').innerHTML = course;
-            document.getElementById('my_level').innerHTML = level;
-
-            // Generate QR Code
-            var qr_code_url = "https://api.qrserver.com/v1/create-qr-code/?data=" + idno + "," + 
-                              lastname + "," + firstname + "," + course + "," + level + "&size=150x150";
-            
-            // Show QR code
-            document.getElementById('generated_qr_code').src = qr_code_url;
-            document.getElementById('generated_qr_code').style.display = 'inline';
-        });
-    }
-
-    function save_student_info() {
-        // Get form data
-        const formData = new FormData();
-        formData.append('idno', document.getElementById('idno').value);
-        formData.append('lastname', document.getElementById('lastname').value);
-        formData.append('firstname', document.getElementById('firstname').value);
-        formData.append('course', document.getElementById('course').value);
-        formData.append('level', document.getElementById('level').value);
-
-        // Save QR code
-        const qrCodeSrc = document.getElementById('generated_qr_code').src;
-        if (qrCodeSrc) {
-            fetch('/save_qr_code', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    qr_code_url: qrCodeSrc,
-                    idno: document.getElementById('idno').value
-                })
+                
+                // 2. Save QR code
+                if (currentQRCodeData) {
+                    return fetch('/save_qr_code', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            qr_code_url: currentQRCodeData,
+                            idno: idno
+                        })
+                    });
+                }
+                return { ok: true };
+            })
+            .then(qrResponse => {
+                if (qrResponse && !qrResponse.ok) {
+                    throw new Error('Failed to save QR code');
+                }
+                
+                // 3. Submit the form to save student data
+                document.getElementById('studentForm').submit();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving student: ' + error.message);
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
             });
         }
-
-        // Submit form to server
-        fetch('/add_student', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if (response.redirected) {
-                window.location.href = response.url;
+        
+        function cancelForm() {
+            if (confirm("Are you sure? All unsaved data will be lost.")) {
+                // Reset form
+                document.getElementById('studentForm').reset();
+                
+                // Reset preview
+                document.getElementById('my_result').innerHTML = '<p class="w3-text-grey">Photo will appear here after taking snapshot</p>';
+                document.getElementById('my_qr_code').innerHTML = '<p class="w3-text-grey">QR Code will appear here</p>';
+                
+                // Reset preview table
+                document.getElementById('my_idno').textContent = '-';
+                document.getElementById('my_lastname').textContent = '-';
+                document.getElementById('my_firstname').textContent = '-';
+                document.getElementById('my_course').textContent = '-';
+                document.getElementById('my_level').textContent = '-';
+                
+                // Reset global variables
+                currentImageData = null;
+                currentQRCodeData = null;
+                
+                // Re-attach QR code element
+                const qrCode = document.getElementById('generated_qr_code');
+                qrCode.style.display = 'none';
+                document.getElementById('my_qr_code').appendChild(qrCode);
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error saving student');
-        });
-    }
-
-    function cancel_form() {
-        // Clear all fields
-        document.getElementById('idno').value = '';
-        document.getElementById('lastname').value = '';
-        document.getElementById('firstname').value = '';
-        document.getElementById('course').value = '';
-        document.getElementById('level').value = '';
-        
-        // Clear displayed data
-        document.getElementById('my_idno').innerHTML = '';
-        document.getElementById('my_lastname').innerHTML = '';
-        document.getElementById('my_firstname').innerHTML = '';
-        document.getElementById('my_course').innerHTML = '';
-        document.getElementById('my_level').innerHTML = '';
-        
-        // Clear image and QR code
-        document.getElementById('my_result').innerHTML = '';
-        document.getElementById('generated_qr_code').style.display = 'none';
-    }
-</script>
-
+        }
+    </script>
 {% endblock %}
