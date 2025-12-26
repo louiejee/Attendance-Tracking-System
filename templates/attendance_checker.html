@@ -2,422 +2,347 @@
 
 {% block content %}
 <style>
-    /* Custom CSS for QR Scanner */
     .scanner-container {
         text-align: center;
         padding: 20px;
-        max-width: 600px;
-        margin: 0 auto;
+        max-width: 500px;
+        margin: 30px auto;
         background: white;
-        border-radius: 15px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
-    
-    .scanner-title {
-        color: #333;
-        margin-bottom: 10px;
-        font-size: 24px;
-        font-weight: bold;
-    }
-    
-    .scanner-subtitle {
-        color: #666;
-        margin-bottom: 30px;
-        font-size: 16px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
     
     #qr-reader {
-        width: 100% !important;
-        max-width: 400px !important;
-        margin: 0 auto !important;
-        border: 3px solid #4CAF50 !important;
-        border-radius: 10px !important;
-        overflow: hidden !important;
+        width: 100%;
+        max-width: 400px;
+        margin: 20px auto;
+        border: 2px solid #007bff;
+        border-radius: 10px;
+        overflow: hidden;
     }
     
-    /* Mirror the scanner view */
+    /* MIRROR EFFECT */
     #qr-reader video,
-    #qr-reader img {
+    #qr-reader canvas {
         transform: scaleX(-1) !important;
     }
     
-    .scan-result {
+    .result-box {
         margin-top: 20px;
         padding: 15px;
-        background: #f8f9fa;
         border-radius: 8px;
         display: none;
     }
     
-    .scan-success {
-        background: #d4edda !important;
+    .success-box {
+        background: #d4edda;
         border: 1px solid #c3e6cb;
         color: #155724;
     }
     
-    .scan-error {
-        background: #f8d7da !important;
+    .error-box {
+        background: #f8d7da;
         border: 1px solid #f5c6cb;
         color: #721c24;
     }
     
-    .student-info {
-        margin-top: 20px;
-        text-align: left;
-        background: #e9f7fe;
-        padding: 15px;
-        border-radius: 8px;
-        border-left: 4px solid #2196F3;
-    }
-    
     .time-display {
-        font-size: 14px;
-        color: #666;
-        background: #f1f1f1;
+        font-family: monospace;
+        background: #f8f9fa;
         padding: 8px 12px;
         border-radius: 5px;
-        display: inline-block;
         margin: 10px 0;
-        font-family: monospace;
+        font-size: 14px;
     }
     
-    .btn-custom {
-        background: #4CAF50;
+    .student-card {
+        background: #e7f3fe;
+        border-left: 4px solid #2196F3;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 5px;
+        text-align: left;
+    }
+    
+    .scan-again-btn {
+        background: #28a745;
         color: white;
-        padding: 10px 20px;
         border: none;
+        padding: 10px 20px;
         border-radius: 5px;
         cursor: pointer;
-        text-decoration: none;
-        display: inline-block;
         margin-top: 15px;
         font-weight: bold;
     }
     
-    .btn-custom:hover {
-        background: #45a049;
-        text-decoration: none;
-        color: white;
+    .scan-again-btn:hover {
+        background: #218838;
     }
 </style>
 
 <div class="scanner-container">
-    <h1 class="scanner-title">ATTENDANCE CHECKER</h1>
-    <p class="scanner-subtitle">Scan Student QR Code</p>
+    <h1>ATTENDANCE CHECKER</h1>
+    <p><strong>Scan Student QR Code</strong></p>
     
-    <!-- QR Scanner Area -->
-    <div id="qr-reader"></div>
-    
-    <!-- Real-time Clock -->
-    <div id="current-time" class="time-display">
-        Current Time: <span id="time-display">Loading...</span>
+    <!-- Current Time Display -->
+    <div class="time-display">
+        Current Time: <span id="current-time">Loading...</span>
     </div>
     
-    <!-- Scan Result Display -->
-    <div id="scan-result" class="scan-result">
-        <div id="result-content"></div>
-        <div id="time-logged" class="time-display" style="display: none;">
-            Time Logged: <span id="logged-time"></span>
+    <!-- QR Scanner -->
+    <div id="qr-reader"></div>
+    
+    <!-- Scan Results -->
+    <div id="scan-result" class="result-box"></div>
+    
+    <!-- Student Info (shown after scan) -->
+    <div id="student-info" style="display: none;">
+        <div class="student-card">
+            <h3 style="color: #155724; margin-top: 0;">✅ Attendance Recorded</h3>
+            <p><strong>Student ID:</strong> <span id="info-idno"></span></p>
+            <p><strong>Name:</strong> <span id="info-name"></span></p>
+            <p><strong>Course:</strong> <span id="info-course"></span></p>
+            <p><strong>Year Level:</strong> <span id="info-level"></span></p>
+            
+            <!-- EXACT TIME LOGGED -->
+            <div class="time-display" style="background: #d1ecf1; margin-top: 10px;">
+                <strong>Time Logged:</strong> <span id="exact-time"></span>
+            </div>
+            
+            <button onclick="scanAgain()" class="scan-again-btn">Scan Another Student</button>
         </div>
     </div>
     
-    <!-- Student Info (Hidden by default) -->
-    <div id="student-info" class="student-info" style="display: none;">
-        <h4>✅ Attendance Recorded Successfully!</h4>
-        <p><strong>Student ID:</strong> <span id="info-idno"></span></p>
-        <p><strong>Name:</strong> <span id="info-name"></span></p>
-        <p><strong>Course:</strong> <span id="info-course"></span></p>
-        <p><strong>Level:</strong> <span id="info-level"></span></p>
-        <p><strong>Status:</strong> <span style="color: green; font-weight: bold;">PRESENT</span></p>
-    </div>
-    
-    <!-- Action Buttons -->
-    <div style="margin-top: 25px;">
-        <button onclick="resetScanner()" class="btn-custom">Scan Another QR Code</button>
-        <a href="/" class="btn-custom" style="background: #2196F3; margin-left: 10px;">Refresh Page</a>
+    <!-- Simple Instructions -->
+    <div style="margin-top: 20px; color: #666; font-size: 14px;">
+        <p>✓ Point camera at student's QR code</p>
+        <p>✓ Make sure QR code is clearly visible</p>
+        <p>✓ Camera view is mirrored for easy scanning</p>
     </div>
 </div>
 
-<!-- Include HTML5 QR Code Scanner -->
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <script>
-    // Global variables
-    let html5QrCode = null;
-    let lastScanTime = null;
-    
-    // Update real-time clock
-    function updateClock() {
-        const now = new Date();
-        const timeString = now.toLocaleTimeString('en-US', {
+// Simple QR Scanner - No redirects, just scan and show
+let scanner = null;
+let isScanning = false;
+
+// Update current time
+function updateTime() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('en-US', {
+        hour12: true,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+    const dateString = now.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+    document.getElementById('current-time').textContent = `${dateString} ${timeString}`;
+}
+
+// Get EXACT timestamp in readable format
+function getExactTimestamp() {
+    const now = new Date();
+    return {
+        iso: now.toISOString(), // For database
+        display: now.toLocaleTimeString('en-US', {
             hour12: true,
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit'
-        });
-        const dateString = now.toLocaleDateString('en-US', {
+        }) + ' on ' + now.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric'
-        });
-        document.getElementById('time-display').textContent = `${dateString} ${timeString}`;
-    }
+        })
+    };
+}
+
+// Start QR Scanner
+function startScanner() {
+    scanner = new Html5Qrcode("qr-reader");
     
-    // Format time for display
-    function formatTime(timestamp) {
-        const date = new Date(timestamp);
-        return date.toLocaleTimeString('en-US', {
-            hour12: true,
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        }) + ' on ' + date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    }
+    const config = { 
+        fps: 10, 
+        qrbox: { width: 250, height: 250 }
+    };
     
-    // Initialize QR Scanner
-    function initQRScanner() {
-        // Create scanner instance
-        html5QrCode = new Html5Qrcode("qr-reader");
+    scanner.start(
+        { facingMode: "environment" },
+        config,
+        onScanSuccess,
+        onScanFailure
+    ).then(() => {
+        isScanning = true;
+        console.log("Scanner started");
         
-        const config = { 
-            fps: 10, 
-            qrbox: { 
-                width: 250, 
-                height: 250 
-            },
-            rememberLastUsedCamera: true,
-            supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
-        };
-        
-        // Start scanner
-        html5QrCode.start(
-            { 
-                facingMode: "environment",
-                width: { ideal: 640 },
-                height: { ideal: 480 }
-            },
-            config,
-            onScanSuccess,
-            onScanFailure
-        ).then(() => {
-            console.log("QR Scanner started successfully");
-            // Apply mirror effect to the video
-            const videoElement = document.querySelector('#qr-reader video');
-            if (videoElement) {
-                videoElement.style.transform = 'scaleX(-1)';
-                videoElement.style.borderRadius = '8px';
+        // Apply MIRROR effect to video
+        setTimeout(() => {
+            const video = document.querySelector('#qr-reader video');
+            if (video) {
+                video.style.transform = 'scaleX(-1)';
             }
-        }).catch(err => {
-            console.error("Failed to start scanner:", err);
-            showError("Failed to start camera. Please check permissions.");
-        });
-    }
-    
-    // Handle successful scan
-    async function onScanSuccess(decodedText) {
-        // Prevent multiple scans within 3 seconds
-        const now = Date.now();
-        if (lastScanTime && (now - lastScanTime < 3000)) {
-            return; // Ignore if scanned too recently
-        }
-        lastScanTime = now;
-        
-        try {
-            // Parse QR data
-            let studentData;
-            try {
-                studentData = JSON.parse(decodedText);
-            } catch (e) {
-                // Try comma-separated format
-                const parts = decodedText.split(',');
-                if (parts.length >= 5) {
-                    studentData = {
-                        idno: parts[0].trim(),
-                        lastname: parts[1].trim(),
-                        firstname: parts[2].trim(),
-                        course: parts[3].trim(),
-                        level: parts[4].trim()
-                    };
-                } else {
-                    throw new Error("Invalid QR code format");
-                }
-            }
-            
-            // Validate required fields
-            if (!studentData.idno) {
-                throw new Error("Student ID not found in QR code");
-            }
-            
-            // Get exact timestamp
-            const scanTimestamp = new Date().toISOString();
-            const displayTime = formatTime(scanTimestamp);
-            
-            // Show scanning message
-            showResult(`Scanning QR Code for ${studentData.firstname || ''} ${studentData.lastname || ''}...`, 'info');
-            
-            // Save attendance to database
-            const success = await saveAttendanceToDatabase(
-                studentData.idno,
-                studentData.lastname || '',
-                studentData.firstname || '',
-                studentData.course || '',
-                studentData.level || '',
-                scanTimestamp
-            );
-            
-            if (success) {
-                // Show success with student info
-                showResult(`✅ Attendance recorded successfully!`, 'success');
-                
-                // Display student information
-                document.getElementById('info-idno').textContent = studentData.idno;
-                document.getElementById('info-name').textContent = 
-                    `${studentData.firstname || ''} ${studentData.lastname || ''}`.trim();
-                document.getElementById('info-course').textContent = studentData.course || 'N/A';
-                document.getElementById('info-level').textContent = studentData.level || 'N/A';
-                
-                // Show logged time
-                document.getElementById('logged-time').textContent = displayTime;
-                document.getElementById('time-logged').style.display = 'block';
-                
-                // Show student info card
-                document.getElementById('student-info').style.display = 'block';
-                
-                // Stop scanner temporarily
-                if (html5QrCode) {
-                    html5QrCode.stop().catch(console.error);
-                }
-                
-                // Play success sound (optional)
-                playSuccessSound();
-                
-            } else {
-                showError("Failed to save attendance. Please try again.");
-            }
-            
-        } catch (error) {
-            console.error("Scan error:", error);
-            showError(`Error: ${error.message}`);
-        }
-    }
-    
-    // Handle scan failure
-    function onScanFailure(error) {
-        // Don't show error for normal operation
-        console.log("QR Scan attempt:", error);
-    }
-    
-    // Save attendance to database
-    async function saveAttendanceToDatabase(idno, lastname, firstname, course, level, timestamp) {
-        // Prepare data to send to server
-        const attendanceData = {
-            student_info: {
-                idno: idno,
-                lastname: lastname,
-                firstname: firstname,
-                course: course,
-                level: level,
-                time_logged: timestamp
-            }
-        };
-        
-        try {
-            // Send to server
-            const response = await fetch('/scan_qr', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(attendanceData)
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                console.log("✓ Attendance saved for:", idno, "at", timestamp);
-                return true;
-            } else {
-                console.error("✗ Failed to save attendance:", data.error);
-                return false;
-            }
-        } catch (error) {
-            console.error("Network error:", error);
-            return false;
-        }
-    }
-    
-    // Show result message
-    function showResult(message, type = 'info') {
-        const resultDiv = document.getElementById('scan-result');
-        const contentDiv = document.getElementById('result-content');
-        
-        contentDiv.textContent = message;
-        resultDiv.className = 'scan-result';
-        
-        if (type === 'success') {
-            resultDiv.classList.add('scan-success');
-        } else if (type === 'error') {
-            resultDiv.classList.add('scan-error');
-        }
-        
-        resultDiv.style.display = 'block';
-    }
-    
-    // Show error message
-    function showError(message) {
-        showResult(`❌ ${message}`, 'error');
-    }
-    
-    // Reset scanner for another scan
-    function resetScanner() {
-        // Hide result and student info
-        document.getElementById('scan-result').style.display = 'none';
-        document.getElementById('student-info').style.display = 'none';
-        document.getElementById('time-logged').style.display = 'none';
-        
-        // Clear content
-        document.getElementById('result-content').textContent = '';
-        
-        // Restart scanner if it was stopped
-        if (html5QrCode && !html5QrCode.isScanning) {
-            initQRScanner();
-        }
-    }
-    
-    // Play success sound (optional)
-    function playSuccessSound() {
-        try {
-            const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
-            audio.volume = 0.3;
-            audio.play().catch(e => console.log("Audio play failed:", e));
-        } catch (e) {
-            console.log("Sound not available");
-        }
-    }
-    
-    // Initialize everything when page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        // Start real-time clock
-        updateClock();
-        setInterval(updateClock, 1000);
-        
-        // Initialize QR scanner
-        initQRScanner();
-        
-        // Add some helpful instructions
-        console.log("QR Scanner ready. Point camera at student QR code.");
+        }, 500);
+    }).catch(err => {
+        console.error("Scanner error:", err);
+        showMessage("Error starting camera. Please allow camera access.", "error");
     });
+}
+
+// Handle successful scan
+async function onScanSuccess(decodedText) {
+    if (!isScanning) return;
     
-    // Handle page visibility change
-    document.addEventListener('visibilitychange', function() {
-        if (!document.hidden && html5QrCode && !html5QrCode.isScanning) {
-            // Restart scanner if page becomes visible again
-            setTimeout(initQRScanner, 500);
+    // Stop scanner temporarily
+    if (scanner) {
+        await scanner.stop();
+        isScanning = false;
+    }
+    
+    try {
+        // Parse QR code data
+        let student = {};
+        
+        // Try JSON format first
+        try {
+            student = JSON.parse(decodedText);
+        } catch(e) {
+            // Try comma-separated format: idno,lastname,firstname,course,level
+            const parts = decodedText.split(',');
+            if (parts.length >= 5) {
+                student = {
+                    idno: parts[0].trim(),
+                    lastname: parts[1].trim(),
+                    firstname: parts[2].trim(),
+                    course: parts[3].trim(),
+                    level: parts[4].trim()
+                };
+            } else {
+                throw new Error("Invalid QR code format");
+            }
         }
-    });
+        
+        // Validate required fields
+        if (!student.idno) {
+            throw new Error("No student ID found");
+        }
+        
+        // Get EXACT timestamp
+        const timestamp = getExactTimestamp();
+        
+        // Show scanning message
+        showMessage(`Scanning ${student.firstname || ''} ${student.lastname || ''}...`, "info");
+        
+        // Save to database
+        const saved = await saveAttendance(student, timestamp.iso);
+        
+        if (saved) {
+            // Display success with student info
+            displayStudentInfo(student, timestamp.display);
+        } else {
+            showMessage("Failed to save attendance. Please try again.", "error");
+            // Restart scanner
+            setTimeout(startScanner, 2000);
+        }
+        
+    } catch (error) {
+        showMessage("Error: " + error.message, "error");
+        // Restart scanner
+        setTimeout(startScanner, 2000);
+    }
+}
+
+// Display student information
+function displayStudentInfo(student, exactTime) {
+    // Hide scanner
+    document.getElementById('qr-reader').style.display = 'none';
+    
+    // Hide scan result box
+    document.getElementById('scan-result').style.display = 'none';
+    
+    // Fill student info
+    document.getElementById('info-idno').textContent = student.idno;
+    document.getElementById('info-name').textContent = 
+        `${student.firstname || ''} ${student.lastname || ''}`.trim();
+    document.getElementById('info-course').textContent = student.course || 'N/A';
+    document.getElementById('info-level').textContent = student.level || 'N/A';
+    document.getElementById('exact-time').textContent = exactTime;
+    
+    // Show student info card
+    document.getElementById('student-info').style.display = 'block';
+}
+
+// Save attendance to database
+async function saveAttendance(student, timestamp) {
+    const attendanceData = {
+        student_info: {
+            idno: student.idno,
+            lastname: student.lastname || '',
+            firstname: student.firstname || '',
+            course: student.course || '',
+            level: student.level || '',
+            time_logged: timestamp  // EXACT timestamp
+        }
+    };
+    
+    try {
+        const response = await fetch('/scan_qr', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(attendanceData)
+        });
+        
+        const data = await response.json();
+        return data.success === true;
+        
+    } catch (error) {
+        console.error("Save error:", error);
+        return false;
+    }
+}
+
+// Scan another student
+function scanAgain() {
+    // Hide student info
+    document.getElementById('student-info').style.display = 'none';
+    
+    // Show scanner again
+    document.getElementById('qr-reader').style.display = 'block';
+    
+    // Restart scanner
+    startScanner();
+}
+
+// Show messages
+function showMessage(text, type) {
+    const resultDiv = document.getElementById('scan-result');
+    resultDiv.textContent = text;
+    resultDiv.className = 'result-box';
+    resultDiv.classList.add(type === 'error' ? 'error-box' : 'success-box');
+    resultDiv.style.display = 'block';
+}
+
+// Handle scan failure
+function onScanFailure(error) {
+    // Just log, don't show error to user
+    console.log("Scan attempt:", error);
+}
+
+// Initialize everything
+document.addEventListener('DOMContentLoaded', function() {
+    // Start clock
+    updateTime();
+    setInterval(updateTime, 1000);
+    
+    // Start scanner
+    startScanner();
+});
 </script>
 {% endblock %}
