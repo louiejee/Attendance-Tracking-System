@@ -258,23 +258,32 @@ def api_attendance():
     attendance = get_all_attendance()
     return jsonify(attendance)
 
-# Add this route to your app.py
-@app.route("/get_attendance")
-def get_attendance():
-    """Get all attendance records"""
+# ✅ Add this NEW route for getting LATEST attendance only:
+@app.route("/get_latest_attendance")
+def get_latest_attendance():
+    """Get only the latest attendance record"""
     try:
-        # You need to implement this function in dbhelper.py
         attendance_records = get_all_attendance()
         
-        return jsonify({
-            'success': True,
-            'attendance': attendance_records
-        })
+        if attendance_records and len(attendance_records) > 0:
+            # Return only the most recent one
+            latest = attendance_records[0]
+            return jsonify({
+                'success': True,
+                'record': latest
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'No attendance records found'
+            })
+            
     except Exception as e:
         return jsonify({
             'success': False,
             'error': str(e)
         })
+
 
 # Student Management Routes
 @app.route("/delete_student/<idno>", methods=["DELETE"])
@@ -359,6 +368,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
+
 
 
 
