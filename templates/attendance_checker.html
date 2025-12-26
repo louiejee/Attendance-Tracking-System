@@ -10,21 +10,21 @@
     </div>
 
     <div class="container">
-    <h1>ATTENDANCE CHECKER</h1>
-    
-    <!-- QR Scanner Section -->
-    <div class="scanner-section">
-        <h2>Scan Student QR Code</h2>
-        <div id="qr-reader" style="width: 100%; max-width: 500px; margin: 0 auto;"></div>
-        <div id="scan-result"></div>
+        <h1>ATTENDANCE CHECKER</h1>
+        
+        <!-- QR Scanner Section -->
+        <div class="scanner-section">
+            <h2>Scan Student QR Code</h2>
+            <div id="qr-reader" style="width: 100%; max-width: 500px; margin: 0 auto;"></div>
+            <div id="scan-result"></div>
+        </div>
+        
+        <!-- Link to view attendance -->
+        <div style="margin-top: 20px;">
+            <p>After scanning, you will be redirected to the attendance page.</p>
+            <a href="/attendance" class="btn">View Attendance Records</a>
+        </div>
     </div>
-    
-    <!-- Link to view attendance -->
-    <div style="margin-top: 20px;">
-        <p>After scanning, you will be redirected to the attendance page.</p>
-        <a href="/attendance" class="btn">View Attendance Records</a>
-    </div>
-</div>
 
     <!-- Modal Container -->
     <div id="student-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); z-index: 1000; justify-content: center; align-items: center;">
@@ -70,9 +70,147 @@
 
     <!-- Include jsQR library -->
     <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+    <!-- Include HTML5 QR Code Scanner -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
     
     <script>
-        window.onload = function() {
+        // Function to save attendance and redirect
+        async function saveAttendanceToDatabase(idno, lastname, firstname, course, level) {
+            // Get current timestamp
+            const now = new Date();
+            const timeLogged = now.toISOString().slice(0, 19).replace('T', ' ');
+            
+            // Prepare data to send to server
+            const attendanceData = {
+                student_info: {
+                    idno: idno,
+                    lastname: lastname,
+                    firstname: firstname,
+                    course: course,
+                    level: level,
+                    time_logged: timeLogged
+                }
+            };
+            
+            console.log("Saving attendance for:", idno, "at", timeLogged);
+            
+            try {
+                // Send to server
+                const response = await fetch('/scan_qr', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(attendanceData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log("✓ Attendance saved successfully!");
+                    
+                    // ✅ IMPORTANT: Redirect to attendance page
+                    setTimeout(() => {
+                        window.location.href = '/attendance';
+                    }, 1000); // 1 second delay to show modal
+                    
+                } else {
+                    console.error("✗ Failed to save attendance:", data.error);
+                    alert("Failed to save attendance. Check console.");
+                }
+            } catch (error) {
+                console.error('Error saving attendance:', error);
+                alert("Error saving attendance. Please try again.");
+            }
+        }
+
+        // Process QR code data from webcam
+        function processQRCodeData(qrData) {
+            try {
+                // Try to parse as JSON first (for new QR codes)
+                let idno, lastname, firstname, course, level;
+                
+                try {
+                    const studentInfo = JSON.parse(qrData);
+                    idno = studentInfo.idno || studentInfo.studentId;
+                    lastname = studentInfo.lastname;
+                    firstname = studentInfo.firstname || studentInfo.name;
+                    course = studentInfo.course;
+                    level = studentInfo.level || studentInfo.year;
+                } catch (e) {
+                    // If not JSON, try comma-separated format
+                    const dataParts = qrData.split(',');
+                    if (dataParts.length >= 5) {
+                        idno = dataParts[0].trim();
+                        lastname = dataParts[1].trim();
+                        firstname = dataParts[2].trim();
+                        course = dataParts[3].trim();
+                        level = dataParts[4].trim();
+                    } else {
+                        throw new Error("Invalid QR code format");
+                    }
+                }
+                
+                if (!idno) {
+                    throw new Error("No student ID found in QR code");
+                }
+                
+                // Populate the modal with the student data
+                document.getElementById('my_idno').textContent = idno;
+                document.getElementById('my_lastname').textContent = lastname || '';
+                document.getElementById('my_firstname').textContent = firstname || '';
+                document.getElementById('my_course').textContent = course || '';
+                document.getElementById('my_level').textContent = level || '';
+
+                // Dynamically set the student image path
+                const img = document.getElementById('student-image');
+                img.src = `static/image/${idno}.jpg`;
+                img.onerror = function() {
+                    this.src = 'static/image/default.jpg'; // Fallback image
+                };
+
+                // Show the modal
+                document.getElementById('student-modal').style.display = 'flex';
+                
+                // ✅ CRITICAL: SAVE ATTENDANCE TO DATABASE
+                saveAttendanceToDatabase(idno, lastname, firstname, course, level);
+                
+            } catch (error) {
+                console.error("QR Code processing error:", error);
+                alert("Error: Invalid QR Code - " + error.message);
+            }
+        }
+
+        // Initialize HTML5 QR Scanner (alternative method)
+        function initHTML5QRScanner() {
+            const html5QrCode = new Html5Qrcode("qr-reader");
+            
+            const config = { 
+                fps: 10, 
+                qrbox: { width: 250, height: 250 } 
+            };
+            
+            html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                onHTML5ScanSuccess,
+                onHTML5ScanFailure
+            );
+            
+            console.log("HTML5 QR Scanner initialized");
+        }
+        
+        async function onHTML5ScanSuccess(decodedText) {
+            console.log("HTML5 QR Scan result:", decodedText);
+            processQRCodeData(decodedText);
+        }
+        
+        function onHTML5ScanFailure(error) {
+            console.log(`HTML5 QR Scan failed: ${error}`);
+        }
+
+        // Initialize webcam QR scanning
+        function initWebcamQRScanner() {
             const video = document.getElementById('my_camera');
             const canvasElement = document.createElement('canvas');
             const canvas = canvasElement.getContext('2d');
@@ -86,193 +224,62 @@
             navigator.mediaDevices.getUserMedia(constraints)
                 .then(function(stream) {
                     video.srcObject = stream;
-                    video.setAttribute('playsinline', true); // required for iOS
+                    video.setAttribute('playsinline', true);
                     video.play();
-                    scanQRCode(); // Start scanning for QR codes
+                    startWebcamScanning(video, canvasElement, canvas);
                 })
                 .catch(function(err) {
-                    alert("Error accessing webcam: " + err);
+                    console.log("Error accessing webcam:", err);
+                    document.getElementById('scan-result').innerHTML = 
+                        `<p style="color: red;">Webcam error: ${err.message}</p>`;
                 });
+        }
+        
+        function startWebcamScanning(video, canvasElement, canvas) {
+            // Continuously scan for QR codes
+            setInterval(() => {
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    // Draw the video frame onto the canvas
+                    canvasElement.height = video.videoHeight;
+                    canvasElement.width = video.videoWidth;
+                    canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
 
-            function scanQRCode() {
-                // Continuously scan for QR codes
-                setInterval(() => {
-                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                        // Draw the video frame onto the canvas
-                        canvasElement.height = video.videoHeight;
-                        canvasElement.width = video.videoWidth;
-                        canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+                    // Get image data from canvas
+                    const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
 
-                        // Get image data from canvas
-                        const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+                    // Scan the image data for QR codes
+                    const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
+                        inversionAttempts: "dontInvert",
+                    });
 
-                        // Scan the image data for QR codes
-                        const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
-                            inversionAttempts: "dontInvert",
-                        });
-
-                        if (qrCode) {
-                            // If QR code is detected, display the QR code data
-                            processQRCodeData(qrCode.data);
-                        }
+                    if (qrCode) {
+                        // If QR code is detected, display the QR code data
+                        processQRCodeData(qrCode.data);
                     }
-                }, 100); // Scan every 100ms
-            }
-
-            <script>
-    function processQRCodeData(qrData) {
-        // Split the QR code data into individual parts
-        const dataParts = qrData.split(',');
-
-        // Check if the data contains 5 parts (idno, lastname, firstname, course, level)
-        if (dataParts.length === 5) {
-            const idno = dataParts[0].trim();
-            const lastname = dataParts[1].trim();
-            const firstname = dataParts[2].trim();
-            const course = dataParts[3].trim();
-            const level = dataParts[4].trim();
-
-            // Populate the modal with the student data
-            document.getElementById('my_idno').innerHTML = idno;
-            document.getElementById('my_lastname').innerHTML = lastname;
-            document.getElementById('my_firstname').innerHTML = firstname;
-            document.getElementById('my_course').innerHTML = course;
-            document.getElementById('my_level').innerHTML = level;
-
-            // Dynamically set the student image path
-            document.getElementById('student-image').src = `static/image/${idno}.jpg`;
-
-            // Show the modal
-            document.getElementById('student-modal').style.display = 'flex';
-            
-            // ✅ CRITICAL: SAVE ATTENDANCE TO DATABASE
-            saveAttendanceToDatabase(idno, lastname, firstname, course, level);
-            
-        } else {
-            alert("Error: Invalid QR Code format");
+                }
+            }, 500); // Scan every 500ms
         }
-    }
 
-    <!-- In your attendance_checker.html template -->
-<script>
-// Initialize QR Scanner if not already done
-function initQRScanner() {
-    const html5QrCode = new Html5Qrcode("qr-reader");
-    
-    const config = { 
-        fps: 10, 
-        qrbox: { width: 250, height: 250 } 
-    };
-    
-    html5QrCode.start(
-        { facingMode: "environment" },
-        config,
-        onScanSuccess,
-        onScanFailure
-    );
-}
+        // Close Modal Logic
+        document.getElementById('close-modal').onclick = function() {
+            document.getElementById('student-modal').style.display = 'none';
+        };
 
-async function onScanSuccess(decodedText) {
-    try {
-        // Parse QR data (should contain student info)
-        const studentInfo = JSON.parse(decodedText);
-        
-        // Send scan data to backend
-        const response = await fetch('/scan_qr', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                student_info: studentInfo
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            // ✅ IMPORTANT: Redirect to attendance page
-            window.location.href = '/attendance';
-        } else {
-            alert('Failed to record attendance. Please try again.');
-        }
-        
-    } catch (error) {
-        console.error('Scan error:', error);
-        alert('Invalid QR code. Please scan a valid student QR code.');
-    }
-}
-
-function onScanFailure(error) {
-    // Optional: Handle scan failure
-    console.log(`QR Scan failed: ${error}`);
-}
-
-// Start scanner when page loads
-document.addEventListener('DOMContentLoaded', initQRScanner);
-</script>
-        
-    function saveAttendanceToDatabase(idno, lastname, firstname, course, level) {
-        // Get current timestamp
-        const now = new Date();
-        const timeLogged = now.toISOString().slice(0, 19).replace('T', ' ');
-        
-        // Prepare data to send to server
-        const attendanceData = {
-            student_info: {
-                idno: idno,
-                lastname: lastname,
-                firstname: firstname,
-                course: course,
-                level: level,
-                time_logged: timeLogged
+        // Hide modal when clicking outside the modal content
+        window.onclick = function(event) {
+            const modal = document.getElementById('student-modal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
             }
         };
-        
-        console.log("Saving attendance for:", idno, "at", timeLogged);
-        
-        // Send to server
-        fetch('/scan_qr', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(attendanceData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                console.log("✓ Attendance saved successfully!");
-                // Optional: Show success message
-                setTimeout(() => {
-                    alert(`Attendance recorded for ${firstname} ${lastname} at ${now.toLocaleTimeString()}`);
-                }, 500);
-            } else {
-                console.error("✗ Failed to save attendance:", data.error);
-                alert("Failed to save attendance. Check console.");
-            }
-        })
-        .catch(error => {
-            console.error('Error saving attendance:', error);
-        });
-    }
 
-            // Close Modal Logic
-            document.getElementById('close-modal').onclick = function() {
-                document.getElementById('student-modal').style.display = 'none';
-            };
-
-            // Hide modal when clicking outside the modal content
-            window.onclick = function(event) {
-                const modal = document.getElementById('student-modal');
-                if (event.target === modal) {
-                    modal.style.display = 'none';
-                }
-            };
+        // Initialize everything when page loads
+        window.onload = function() {
+            console.log("Page loaded, initializing scanners...");
+            
+            // Initialize both scanners
+            initWebcamQRScanner();
+            initHTML5QRScanner();
         };
     </script>
-
 {% endblock %}
-
-
-
